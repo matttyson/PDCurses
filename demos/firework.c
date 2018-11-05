@@ -20,6 +20,10 @@ int main(int argc, char **argv)
     int start, end, row, diff, flag, direction;
     short i;
 
+#ifdef PDCDEBUG
+	traceon();
+#endif
+
 #ifdef XCURSES
     Xinitscr(argc, argv);
 #else
