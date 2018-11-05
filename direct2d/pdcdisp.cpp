@@ -65,9 +65,25 @@ chtype acs_map[128] =
 #endif
 
 
+static chtype old_ch_attr = -1;
+
 void PDC_gotoyx(int row, int col)
 {
     PDC_LOG((__FUNCTION__ " called\n"));
+}
+
+static void _set_colors(chtype ch)
+{
+    if (SP->mono) {
+        return;
+    }
+
+    ch &= (A_COLOR | A_BOLD | A_BLINK | A_REVERSE);
+
+    if(old_ch_attr == ch){
+        return;
+    }
+
 }
 
 static void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *srcp)
@@ -95,6 +111,8 @@ static void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *s
 
         int color = (srcp[i] & A_COLOR) >> PDC_COLOR_SHIFT;
         const chtype letter = srcp[i] & A_CHARTEXT;
+
+        _set_colors(srcp[i]);
 
         const auto destination = D2D1::RectF(left, top, right, bottom);
         const auto dpoint = D2D1::Point2F(left, top);
@@ -149,6 +167,23 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
     int j = 1;
 
     old_attr = *srcp & (A_ATTRIBUTES ^ A_ALTCHARSET);
+
+    static int cptr = 0;
+
+    auto col = pdc_d2d_colors[cptr];
+
+    cptr = (cptr + 1) % 256;
+
+    D2D_VECTOR_3F vec = {
+        col.r, col.g, col.b
+    };
+
+    HRESULT c = pdc_colorEffect->SetValueByName(
+        TEXT("ForegroundColor"),
+        D2D1_PROPERTY_TYPE_VECTOR3,
+        (const BYTE*) &vec,
+        sizeof(vec)
+    );
 
     m_d2dContext->BeginDraw();
 

@@ -3,26 +3,33 @@
 
 #include "ColorGlyphEffectShader.h"
 
-HRESULT ColorGlyphEffect::SetForegroundColor(UINT foreground)
+HRESULT ColorGlyphEffect::SetForegroundColor(D2D_VECTOR_3F foreground)
 {
-    m_constantBuffer.fg = foreground;
+    m_colors.fg.r = foreground.x;
+    m_colors.fg.g = foreground.y;
+    m_colors.fg.b = foreground.z;
+
     return S_OK;
 }
 
-UINT ColorGlyphEffect::GetForegroundColor()const
+D2D_VECTOR_3F ColorGlyphEffect::GetForegroundColor()const
 {
-    return m_constantBuffer.fg;
+    D2D_VECTOR_3F vector = {m_colors.fg.r, m_colors.fg.g, m_colors.fg.b};
+    return vector;
 }
 
-HRESULT ColorGlyphEffect::SetBackgroundColor(UINT background)
+HRESULT ColorGlyphEffect::SetBackgroundColor(D2D_VECTOR_3F background)
 {
-    m_constantBuffer.bg = background;
+    m_colors.bg.r = background.x;
+    m_colors.bg.g = background.y;
+    m_colors.bg.b = background.z;
     return S_OK;
 }
 
-UINT ColorGlyphEffect::GetBackgroundColor()const
+D2D_VECTOR_3F ColorGlyphEffect::GetBackgroundColor()const
 {
-    return  m_constantBuffer.bg;
+    D2D_VECTOR_3F vector = { m_colors.bg.r, m_colors.bg.g, m_colors.bg.b };
+    return vector;
 }
 
 IFACEMETHODIMP ColorGlyphEffect::Initialize(
@@ -80,17 +87,17 @@ HRESULT ColorGlyphEffect::Register(_In_ ID2D1Factory1* pFactory)
         "<Input name=\"Source\"/>"
         "</Inputs>"
         "<!--Custom Properties go here. -->"
-        "<Property name=\"ForegroundColor\" type=\"uint32\">"
+        "<Property name=\"ForegroundColor\" type=\"vector3\">"
         "<Property name=\"DisplayName\" type=\"string\" value=\"foreground color value\"/>"
-        "<Property name=\"Min\" type=\"uint32\" value=\"0\"/>"
-        "<Property name=\"Max\" type=\"uint32\" value=\"0x00FFFFFF\"/>"
-        "<Property name=\"Default\" type=\"uint32\" value=\"0\"/>"
+        "<Property name=\"Min\" type=\"vector3\" value=\"(0.0, 0.0, 0.0)\"/>"
+        "<Property name=\"Max\" type=\"vector3\" value=\"(1.0, 1.0, 1.0)\"/>"
+        "<Property name=\"Default\" type=\"vector3\" value=\"(0.0, 0.0, 0.0)\"/>"
         "</Property>"
-        "<Property name=\"BackgroundColor\" type=\"uint32\">"
+        "<Property name=\"BackgroundColor\" type=\"vector3\">"
         "<Property name=\"DisplayName\" type=\"string\" value=\"background color value\"/>"
-        "<Property name=\"Min\" type=\"uint32\" value=\"0\"/>"
-        "<Property name=\"Max\" type=\"uint32\" value=\"0x00FFFFFF\"/>"
-        "<Property name=\"Default\" type=\"uint32\" value=\"0\"/>"
+        "<Property name=\"Min\" type=\"vector3\" value=\"(0.0, 0.0, 0.0)\"/>"
+        "<Property name=\"Max\" type=\"vector3\" value=\"(1.0, 1.0, 1.0)\"/>"
+        "<Property name=\"Default\" type=\"vector3\" value=\"(0.0, 0.0, 0.0)\"/>"
         "</Property>"
         "</Effect>");
 
@@ -183,8 +190,8 @@ HRESULT ColorGlyphEffect::UpdateConstants()
     //m_constants.dpi = m_dpi;
 
     return m_drawInfo->SetPixelShaderConstantBuffer(
-        reinterpret_cast<BYTE*>(&m_constantBuffer),
-        sizeof(m_constantBuffer)
+        reinterpret_cast<BYTE*>(&m_colors),
+        sizeof(m_colors)
     );
 }
 
@@ -253,6 +260,5 @@ IFACEMETHODIMP_(UINT32) ColorGlyphEffect::GetInputCount() const
 ColorGlyphEffect::ColorGlyphEffect()
     :m_refCount(1)
 {
-    m_constantBuffer.fg = 0;
-    m_constantBuffer.bg = 0;
+    ZeroMemory(&m_colors, sizeof(m_colors));
 }

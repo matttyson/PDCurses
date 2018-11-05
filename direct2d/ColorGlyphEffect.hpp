@@ -45,11 +45,11 @@ public:
     static HRESULT Register(_In_ ID2D1Factory1* pFactory);
     static HRESULT __stdcall CreateColorGlyphEffect(_Outptr_ IUnknown** ppEffectImpl);
 
-    HRESULT SetForegroundColor(UINT);
-    UINT GetForegroundColor()const;
+    HRESULT SetForegroundColor(D2D_VECTOR_3F Colors); // RGB values
+    D2D_VECTOR_3F GetForegroundColor()const;
 
-    HRESULT SetBackgroundColor(UINT);
-    UINT GetBackgroundColor()const;
+    HRESULT SetBackgroundColor(D2D_VECTOR_3F Colors); // RGB values
+    D2D_VECTOR_3F GetBackgroundColor()const;
 
     // Drawinfo method from ID2D1DrawTransform
     IFACEMETHODIMP SetDrawInfo(_In_ ID2D1DrawInfo* pRenderInfo);
@@ -85,9 +85,17 @@ private:
 
 
     struct {
-        UINT fg;
-        UINT bg;
-    } m_constantBuffer;
+        struct {
+            float r;
+            float g;
+            float b;
+        } fg;
+        struct {
+            float r;
+            float g;
+            float b;
+        } bg;
+    } m_colors;
 
     ULONG m_refCount;
 

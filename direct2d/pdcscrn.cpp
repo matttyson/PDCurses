@@ -21,7 +21,7 @@ ID2D1DeviceContext *m_d2dContext = NULL;
 ID2D1Effect *pdc_colorEffect = NULL;
 
 D2D1::ColorF pdc_d2d_colors[];
-ID2D1SolidColorBrush *pdc_d2d_brushes[];
+//ID2D1SolidColorBrush *pdc_d2d_brushes[];
 
 // D2D_USE_C_DEFINITIONS
 
@@ -111,9 +111,9 @@ void PDC_scr_free(void)
         free(SP);
     }
 
-    for (int i = 0; i < 256; i++) {
-        SafeRelease(&pdc_d2d_brushes[i]);
-    }
+//    for (int i = 0; i < 256; i++) {
+//        SafeRelease(&pdc_d2d_brushes[i]);
+//    }
 
     //SafeRelease(&d2dFactory);
     SafeRelease(&pdc_font_bitmap);
@@ -519,12 +519,14 @@ static void d2d_init_colours()
     }
 
     // Turn them into brushes
+/*
     for(int i = 0; i < 256; i++){
         HRESULT hr = m_d2dContext->CreateSolidColorBrush(pdc_d2d_colors[i], &pdc_d2d_brushes[i]);
         if(FAILED(hr)){
             return;
         }
     }
+*/
 }
 
 // https://i.imgur.com/U4GnISB.jpg 
