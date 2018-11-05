@@ -23,6 +23,13 @@ ID2D1Effect *pdc_colorEffect = NULL;
 D2D1::ColorF pdc_d2d_colors[];
 //ID2D1SolidColorBrush *pdc_d2d_brushes[];
 
+static struct {
+    short fg;
+    short bg;
+}
+atrtab [PDC_COLOR_PAIRS];
+
+
 // D2D_USE_C_DEFINITIONS
 
 static void d2d_init_colours();
@@ -38,9 +45,6 @@ EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #define HINST_THISCOMPONENT ((HINSTANCE)&__ImageBase)
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
-
-
-
 
 bool PDC_can_change_color(void)
 {
@@ -62,15 +66,18 @@ int PDC_init_color(short color, short red, short green, short blue)
 
 void PDC_init_pair(short pair, short fg, short bg)
 {
+    atrtab[pair].fg = fg;
+    atrtab[pair].bg = bg;
     PDC_LOG((__FUNCTION__ " called\n"));
 }
 
 int PDC_pair_content(short pair, short *fg, short *bg)
 {
+    *fg = atrtab[pair].fg;
+    *bg = atrtab[pair].bg;
     PDC_LOG((__FUNCTION__ " called\n"));
     return OK;
 }
-
 
 void PDC_reset_prog_mode(void)
 {
@@ -111,13 +118,7 @@ void PDC_scr_free(void)
         free(SP);
     }
 
-//    for (int i = 0; i < 256; i++) {
-//        SafeRelease(&pdc_d2d_brushes[i]);
-//    }
-
-    //SafeRelease(&d2dFactory);
     SafeRelease(&pdc_font_bitmap);
-    //SafeRelease(&rTarget);
 
     DestroyWindow(hwnd);
 
@@ -136,19 +137,6 @@ int PDC_scr_open(int argc, char **argv)
 
     // Register the window class.
     WNDCLASSEX window = { sizeof(WNDCLASSEX) };
-/*
-    window.style = CS_HREDRAW | CS_VREDRAW;
-    window.lpfnWndProc = WndProc;
-    window.cbClsExtra = 0;
-    window.cbWndExtra = sizeof(LONG_PTR);
-    window.hInstance = HINST_THISCOMPONENT;
-    window.hbrBackground = (HBRUSH) COLOR_WINDOW;
-    window.lpszMenuName = NULL;
-    window.hCursor = LoadCursor(NULL, IDI_APPLICATION);
-    window.lpszClassName = L"MainWindow";
-*/
-
-    HINSTANCE myinst = GetModuleHandle(NULL);
 
     memset(&window, 0, sizeof(WNDCLASSEX));
 	window.cbSize = sizeof(WNDCLASSEX);
@@ -188,34 +176,6 @@ int PDC_scr_open(int argc, char **argv)
         return -1;
     }
 
-
-    /*
-    // Create the Direct2D resources
-    HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &d2dFactory);
-    if(FAILED(hr)){
-        CloseWindow(hwnd);
-        UnregisterClass(L"MainWindow", HINST_THISCOMPONENT);
-        return -1;
-    }
-
-    hr = d2dFactory->CreateHwndRenderTarget(
-		D2D1::RenderTargetProperties(),
-		D2D1::HwndRenderTargetProperties(hwnd, D2D1::SizeU(rect.right,rect.bottom)),
-		&rTarget);
-
-    if(hr != S_OK){
-        return -1;
-    }
-    */
-
-    /*
-    d2dFactory1->CreateHwndRenderTarget(
-        D2D1::RenderTargetProperties(),
-        D2D1::HwndRenderTargetProperties(hwnd, D2D1::SizeU(rect.right, rect.bottom)),
-        &rTarget
-    );
-    */
-
     bool trc = d2d_create_context();
     if(!trc){
         return -1;
@@ -228,7 +188,7 @@ int PDC_scr_open(int argc, char **argv)
     UpdateWindow(hwnd);
 
     SP->mono = FALSE;
-
+    SP->audible = FALSE;
     SP->lines = PDC_get_rows();
     SP->cols = PDC_get_columns();
 
