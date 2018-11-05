@@ -2,19 +2,23 @@
 
 #include "deffont.h"
 
+#include "ColorGlyphEffect.hpp"
+
 #include <memory>
 
 HWND hwnd = NULL;
 //ID2D1Factory *d2dFactory = NULL;
 ID2D1HwndRenderTarget *rTarget = NULL;
 ID2D1Bitmap *pdc_font_bitmap = NULL;
-ID2D1Effect *pdc_color_effect = NULL;
+//ID2D1Effect *pdc_color_effect = NULL;
+ColorGlyphEffect *m_colorGlyphEffect = NULL;
 
 ID2D1Bitmap1 *m_d2dTargetBitmap = NULL;
 ID2D1Factory1 *m_d2dFactory1 = NULL;
 IDXGISwapChain1 *m_swapChain = NULL;
 ID2D1Device *m_d2dDevice = NULL;
 ID2D1DeviceContext *m_d2dContext = NULL;
+ID2D1Effect *pdc_colorEffect = NULL;
 
 D2D1::ColorF pdc_d2d_colors[];
 ID2D1SolidColorBrush *pdc_d2d_brushes[];
@@ -418,6 +422,17 @@ static bool d2d_create_context()
 
     m_d2dContext->SetTarget(m_d2dTargetBitmap);
 
+    hr = ColorGlyphEffect::Register(m_d2dFactory1);
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    hr = m_d2dContext->CreateEffect(CLSID_ColorGlyphEffect,
+        &pdc_colorEffect);
+    if (FAILED(hr)) {
+        return false;
+    }
+
     // We now have a properly configured D2D Device context.
     // before we can use it we need to fill the entire display
     // and present it so that Present1 calls will work when
@@ -427,6 +442,10 @@ static bool d2d_create_context()
     m_d2dContext->BeginDraw();
     m_d2dContext->Clear(0x0);
     hr = m_d2dContext->EndDraw();
+
+
+
+
     if (FAILED(hr)) {
         return false;
     }
@@ -571,6 +590,9 @@ static void d2d_load_font()
             &pdc_font_bitmap
         );
     }
+
+    // todo fix this?
+    pdc_colorEffect->SetInput(0, pdc_font_bitmap);
 
     SafeRelease(&pDecoder);
     SafeRelease(&pSource);

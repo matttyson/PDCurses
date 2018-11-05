@@ -97,6 +97,7 @@ static void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *s
         const chtype letter = srcp[i] & A_CHARTEXT;
 
         const auto destination = D2D1::RectF(left, top, right, bottom);
+        const auto dpoint = D2D1::Point2F(left, top);
 
         // Work out the area in the source glyph.
 
@@ -114,13 +115,24 @@ static void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *s
 
         //https://stackoverflow.com/questions/9021244/how-to-work-with-pixels-using-direct2d
 
+        //m_d2dContext->SetTransform((ID2D1DrawTransform*)m_colorGlyphEffect);
+
+        m_d2dContext->DrawImage(
+            pdc_colorEffect,
+            dpoint,
+            source,
+            D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
+            D2D1_COMPOSITE_MODE_SOURCE_OVER
+        );
+
+        /*
         m_d2dContext->DrawBitmap(
             pdc_font_bitmap,
             &destination,
             1.0f,
             D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
             &source
-        );
+        );*/
     }
 
 
