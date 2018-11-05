@@ -187,6 +187,10 @@ int PDC_scr_open(int argc, char **argv)
     ShowWindow(hwnd, SW_SHOWNORMAL);
     UpdateWindow(hwnd);
 
+    SP->orig_attr = TRUE;
+    SP->orig_fore = COLOR_WHITE;
+    SP->orig_back = -1;
+
     SP->mono = FALSE;
     SP->audible = FALSE;
     SP->lines = PDC_get_rows();
@@ -197,7 +201,8 @@ int PDC_scr_open(int argc, char **argv)
 
     SP->termattrs = A_COLOR | A_UNDERLINE | A_LEFT | A_RIGHT | A_REVERSE;
 
-
+    // We need to set this so PDCurses knows how many colors we suppport.
+    COLORS = 256;
 
 //    ((ID2D1DeviceContext*)rTarget)->CreateEffect(CLSID_D2D1ColorMatrix, &pdc_color_effect);
     //d2d_create_glyphs();

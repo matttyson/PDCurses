@@ -4,9 +4,6 @@
 
 #include "pdcd2d.h"
 
-int pdc_cheight = 16;
-int pdc_cwidth = 8;
-
 #ifdef CHTYPE_LONG
 
 # define A(x) ((chtype)x | A_ALTCHARSET)
@@ -64,8 +61,12 @@ chtype acs_map[128] =
 
 #endif
 
+int pdc_cheight = 16;
+int pdc_cwidth = 8;
+static chtype oldch = -1;
+static short foregr = -2;
+static short backgr = -2;
 
-static chtype old_ch_attr = -1;
 static bool pdc_update_fg = false;
 static int pdc_color_fg_index = COLOR_WHITE | 8; // bold white
 static int pdc_color_bg_index = 0;
@@ -75,45 +76,62 @@ void PDC_gotoyx(int row, int col)
     PDC_LOG((__FUNCTION__ " called\n"));
 }
 
+
 static void _set_colors(chtype ch)
 {
-    if (SP->mono) {
-        return;
-    }
+    attr_t sysattrs = SP->termattrs;
 
     ch &= (A_COLOR | A_BOLD | A_BLINK | A_REVERSE);
 
-    if(old_ch_attr == ch){
-        return;
-    }
-
-    old_ch_attr = ch;
-    short fg, bg;
-
-    PDC_pair_content(PAIR_NUMBER(ch), &fg, &bg);
-
-    if(ch & A_BOLD){
-        fg |= 8;
-    }
-
-    // Update the foreground colors
+    if (oldch != ch)
     {
-        auto col = pdc_d2d_colors[fg];
+        short newfg, newbg;
 
-        printf("Color: %d\n",(int)fg);
+        if (SP->mono)
+            return;
 
-        D2D_VECTOR_3F vec = {
-            col.r, col.g, col.b
-        };
+        PDC_pair_content(PAIR_NUMBER(ch), &newfg, &newbg);
 
-        HRESULT c = pdc_colorEffect->SetValueByName(
-            TEXT("ForegroundColor"),
-            D2D1_PROPERTY_TYPE_VECTOR3,
-            (const BYTE*)&vec,
-            sizeof(vec)
-        );
+        if ((ch & A_BOLD) && !(sysattrs & A_BOLD))
+            newfg |= 8;
+        if ((ch & A_BLINK) && !(sysattrs & A_BLINK))
+            newbg |= 8;
+
+        if (ch & A_REVERSE)
+        {
+            short tmp = newfg;
+            newfg = newbg;
+            newbg = tmp;
+        }
+
+        if (newfg != foregr)
+        {
+#ifndef PDC_WIDE
+            const auto col = pdc_d2d_colors[newfg];
+
+            D2D_VECTOR_3F vec = {
+                col.r, col.g, col.b
+            };
+
+            HRESULT c = pdc_colorEffect->SetValueByName(
+                TEXT("ForegroundColor"),
+                D2D1_PROPERTY_TYPE_VECTOR3,
+                (const BYTE*)&vec,
+                sizeof(vec)
+            );
+#endif
+            foregr = newfg;
+        }
+
+        if (newbg != backgr)
+        {
+            backgr = newbg;
+        }
+
+        oldch = ch;
     }
 }
+
 
 static void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *srcp)
 {
@@ -196,8 +214,6 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
     old_attr = *srcp & (A_ATTRIBUTES ^ A_ALTCHARSET);
 
     static int cptr = 0;
-
-
 
     m_d2dContext->BeginDraw();
 
