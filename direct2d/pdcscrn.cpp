@@ -11,20 +11,12 @@
 using namespace Microsoft::WRL; // for ComPtr
 
 HWND hwnd = NULL;
-//ID2D1Factory *d2dFactory = NULL;
-ID2D1HwndRenderTarget *rTarget = NULL;
-ID2D1Bitmap *pdc_font_bitmap = NULL;
-//ID2D1Effect *pdc_color_effect = NULL;
-ColorGlyphEffect *m_colorGlyphEffect = NULL;
-
-ID2D1Bitmap1 *m_d2dTargetBitmap = NULL;
-ID2D1Factory1 *m_d2dFactory1 = NULL;
-IDXGISwapChain1 *m_swapChain = NULL;
-ID2D1Device *m_d2dDevice = NULL;
 ID2D1DeviceContext *m_d2dContext = NULL;
 ID2D1Effect *pdc_colorEffect = NULL;
-
 D2D1::ColorF pdc_d2d_colors[];
+ID2D1Bitmap *pdc_font_bitmap = NULL;
+IDXGISwapChain1 *m_swapChain = NULL;
+
 //ID2D1SolidColorBrush *pdc_d2d_brushes[];
 
 static struct {
@@ -123,6 +115,8 @@ void PDC_scr_free(void)
     }
 
     SafeRelease(&pdc_font_bitmap);
+    SafeRelease(&m_d2dContext);
+    SafeRelease(&pdc_colorEffect);
 
     DestroyWindow(hwnd);
 
@@ -234,10 +228,11 @@ static bool d2d_create_context()
 
     HRESULT hr;
 
+    ComPtr<ID2D1Factory1> d2dFactory1;
     hr = D2D1CreateFactory<ID2D1Factory1>(
         D2D1_FACTORY_TYPE_SINGLE_THREADED, 
         opts,
-        &m_d2dFactory1
+        &d2dFactory1
     );
     if (FAILED(hr)) {
         return false;
@@ -296,12 +291,13 @@ static bool d2d_create_context()
         return false;
     }
 
-    hr  = m_d2dFactory1->CreateDevice(dxgiDevice.Get(), &m_d2dDevice);
+    ComPtr<ID2D1Device> d2dDevice;
+    hr  = d2dFactory1->CreateDevice(dxgiDevice.Get(), &d2dDevice);
     if (FAILED(hr)) {
         return false;
     }
 
-    hr = m_d2dDevice->CreateDeviceContext(
+    hr = d2dDevice->CreateDeviceContext(
         D2D1_DEVICE_CONTEXT_OPTIONS_NONE,
         &m_d2dContext
     );
@@ -376,19 +372,19 @@ static bool d2d_create_context()
         return false;
     }
 
+    ComPtr<ID2D1Bitmap1> d2dTargetBitmap;
     hr = m_d2dContext->CreateBitmapFromDxgiSurface(
         dxgiBackBuffer.Get(),
         &bitmapProperties,
-        &m_d2dTargetBitmap
+        &d2dTargetBitmap
     );
     if (FAILED(hr)) {
         return false;
     }
 
+    m_d2dContext->SetTarget(d2dTargetBitmap.Get());
 
-    m_d2dContext->SetTarget(m_d2dTargetBitmap);
-
-    hr = ColorGlyphEffect::Register(m_d2dFactory1);
+    hr = ColorGlyphEffect::Register(d2dFactory1.Get());
     if (FAILED(hr)) {
         return false;
     }
@@ -409,12 +405,10 @@ static bool d2d_create_context()
     m_d2dContext->Clear(0x0);
     hr = m_d2dContext->EndDraw();
 
-
-
-
     if (FAILED(hr)) {
         return false;
     }
+
     hr = m_swapChain->Present1(1,0,&params);
     if (FAILED(hr)) {
         return false;
@@ -463,7 +457,6 @@ static void d2d_init_colours()
         pdc_d2d_colors[i + 8] = make_color(rb, gb, bb);
     }
 
-
     // The XTerm extended colour set.
     int color = 16;
     for(int r = 0; r < 6; r++){
@@ -483,21 +476,11 @@ static void d2d_init_colours()
         const unsigned char value = i * 10 + 8;
         pdc_d2d_colors[i + 232] = make_color(value, value, value);
     }
-
-    // Turn them into brushes
-/*
-    for(int i = 0; i < 256; i++){
-        HRESULT hr = m_d2dContext->CreateSolidColorBrush(pdc_d2d_colors[i], &pdc_d2d_brushes[i]);
-        if(FAILED(hr)){
-            return;
-        }
-    }
-*/
 }
 
 // https://i.imgur.com/U4GnISB.jpg 
 
-#if 0
+#if 1
 static void d2d_load_font()
 {
     ComPtr<IWICBitmapDecoder> pDecoder;

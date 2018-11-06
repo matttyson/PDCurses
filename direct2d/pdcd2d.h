@@ -33,13 +33,9 @@
 #include "ColorGlyphEffect.hpp"
 
 extern HWND hwnd;
-//extern ID2D1Factory *d2dFactory;
-extern ID2D1Factory1 *m_d2dFactory1;
 extern ID2D1DeviceContext *m_d2dContext;
 extern ID2D1Effect *pdc_colorEffect;
-//extern ID2D1HwndRenderTarget *rTarget;
 extern D2D1::ColorF pdc_d2d_colors[256];
-//extern ID2D1SolidColorBrush *pdc_d2d_brushes[256];
 extern ID2D1Bitmap *pdc_font_bitmap;
 
 extern IDXGISwapChain1 *m_swapChain;
