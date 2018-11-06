@@ -500,12 +500,10 @@ static void d2d_init_colours()
 #if 0
 static void d2d_load_font()
 {
-    IWICBitmapDecoder *pDecoder = NULL;
-    IWICBitmapFrameDecode *pSource = NULL;
-    IWICStream *pStream = NULL;
-    IWICFormatConverter *pConverter = NULL;
-    IWICBitmapScaler *pScaler = NULL;
-    IWICImagingFactory *pIWICFactory = NULL;
+    ComPtr<IWICBitmapDecoder> pDecoder;
+    ComPtr<IWICBitmapFrameDecode> pSource;
+    ComPtr<IWICFormatConverter> pConverter;
+    ComPtr<IWICImagingFactory> pIWICFactory;
 
     HRESULT hr;
     hr = CoCreateInstance(
@@ -513,7 +511,7 @@ static void d2d_load_font()
         NULL,
         CLSCTX_INPROC_SERVER,
         IID_IWICImagingFactory,
-        reinterpret_cast<void **>(&pIWICFactory)
+        &pIWICFactory
     );
 
     hr = pIWICFactory->CreateDecoderFromFilename(
@@ -540,7 +538,7 @@ static void d2d_load_font()
     if (SUCCEEDED(hr))
     {
         hr = pConverter->Initialize(
-            pSource,
+            pSource.Get(),
             GUID_WICPixelFormat32bppPBGRA,
             WICBitmapDitherTypeNone,
             NULL,
@@ -554,7 +552,7 @@ static void d2d_load_font()
 
         // Create a Direct2D bitmap from the WIC bitmap.
         hr = m_d2dContext->CreateBitmapFromWicBitmap(
-            pConverter,
+            pConverter.Get(),
             NULL,
             &pdc_font_bitmap
         );
@@ -562,12 +560,6 @@ static void d2d_load_font()
 
     // todo fix this?
     pdc_colorEffect->SetInput(0, pdc_font_bitmap);
-
-    SafeRelease(&pDecoder);
-    SafeRelease(&pSource);
-    SafeRelease(&pStream);
-    SafeRelease(&pConverter);
-    SafeRelease(&pScaler);
 }
 
 #else
