@@ -6,6 +6,10 @@
 
 #include <memory>
 
+#include <d3d11.h>
+#include <wrl/client.h>
+using namespace Microsoft::WRL; // for ComPtr
+
 HWND hwnd = NULL;
 //ID2D1Factory *d2dFactory = NULL;
 ID2D1HwndRenderTarget *rTarget = NULL;
@@ -213,10 +217,7 @@ int PDC_scr_open(int argc, char **argv)
 
 // https://docs.microsoft.com/en-us/windows/desktop/direct2d/color-matrix
 
-#include <d3d11.h>
 
-#include <wrl/client.h>
-using namespace Microsoft::WRL; // for ComPtr
 
 static bool d2d_create_context()
 {
@@ -496,6 +497,7 @@ static void d2d_init_colours()
 
 // https://i.imgur.com/U4GnISB.jpg 
 
+#if 0
 static void d2d_load_font()
 {
     IWICBitmapDecoder *pDecoder = NULL;
@@ -568,13 +570,15 @@ static void d2d_load_font()
     SafeRelease(&pScaler);
 }
 
-#if 0
-static void d2d_load_font_()
+#else
+static void d2d_load_font()
 {
-    IWICFormatConverter *pConverter = NULL;
-    IWICImagingFactory *pIWICFactory = NULL;
-    IWICPalette *pPalette = NULL;
-    IWICBitmap *pBitmap = NULL;
+    ComPtr<IWICFormatConverter> pConverter;
+    ComPtr<IWICImagingFactory> pIWICFactory;
+    ComPtr<IWICPalette> pPalette;
+    ComPtr<IWICBitmap> pBitmap;
+    ComPtr<IWICBitmapFlipRotator> pIFlipRotator;
+    ComPtr<IWICBitmapDecoder> pIDecoder;
 
     HRESULT hr;
 
@@ -583,16 +587,20 @@ static void d2d_load_font_()
         NULL,
         CLSCTX_INPROC_SERVER,
         IID_IWICImagingFactory,
-        reinterpret_cast<void **>(&pIWICFactory)
+        &pIWICFactory
     );
+
+    // We need to skip the bitmap header and provide the raw pixel data
+    // To do this we grap the offset where the data begins from the bitmap header
+    BITMAPFILEHEADER *fh = (BITMAPFILEHEADER*) deffont;
 
     if(SUCCEEDED(hr)){
         hr = pIWICFactory->CreateBitmapFromMemory(
             256, 128,
             GUID_WICPixelFormat1bppIndexed,
-            (256 * 1) / 8,
-            sizeof(deffont),
-            deffont,
+            32, // 256 pixels wide, one bit per pixel. a scan line is 32 bytes long.
+            sizeof(deffont) - fh->bfOffBits,
+            deffont + fh->bfOffBits,  // skip bitmap header
             &pBitmap
         );
     }
@@ -606,7 +614,22 @@ static void d2d_load_font_()
     }
     
     if(SUCCEEDED(hr)){
-        hr = pBitmap->SetPalette(pPalette);
+        hr = pBitmap->SetPalette(pPalette.Get());
+    }
+
+    // For some reason when loading from memory the image is upside down.
+    // I have no idea why that is the case, but we flip it 180 to fix that.
+
+    if (SUCCEEDED(hr)) {
+        hr = pIWICFactory->CreateDecoder(GUID_ContainerFormatBmp, NULL, &pIDecoder);
+    }
+
+    if (SUCCEEDED(hr)) {
+        hr = pIWICFactory->CreateBitmapFlipRotator(&pIFlipRotator);
+    }
+
+    if(SUCCEEDED(hr)){
+        hr = pIFlipRotator->Initialize(pBitmap.Get(), WICBitmapTransformFlipVertical);
     }
 
     if (SUCCEEDED(hr)) {
@@ -616,7 +639,7 @@ static void d2d_load_font_()
 
     if(SUCCEEDED(hr)){
         hr = pConverter->Initialize(
-            pBitmap,
+            pIFlipRotator.Get(),
             GUID_WICPixelFormat32bppPBGRA,
             WICBitmapDitherTypeNone,
             NULL,
@@ -628,33 +651,12 @@ static void d2d_load_font_()
     if(SUCCEEDED(hr)){
         // Create a Direct2D bitmap from the WIC bitmap.
         hr = m_d2dContext->CreateBitmapFromWicBitmap(
-            pConverter,
+            pConverter.Get(),
             NULL,
             &pdc_font_bitmap
         );
     }
 
-#if 0 
-    IWICBitmapDecoder *pIDecoder = NULL;
-    IWICBitmapFrameDecode *pIDecoderFrame = NULL;
-    IWICBitmapFlipRotator *pIFlipRotator = NULL;
-
-    hr = pIWICFactory->CreateDecoder(GUID_ContainerFormatBmp, NULL, &pIDecoder);
-    pIDecoder->
-
-    hr = pIDecoder->GetFrame(0, &pIDecoderFrame);
-    hr = pIWICFactory->CreateBitmapFlipRotator(&pIFlipRotator);
-
-    hr = pIFlipRotator->Initialize(
-        pIDecoderFrame,                     // Bitmap source to flip.
-        WICBitmapTransformFlipHorizontal);
-    pIDecoder->
-#endif
-    SafeRelease(&pBitmap);
-    SafeRelease(&pPalette);
-    SafeRelease(&pConverter);
-    SafeRelease(&pIWICFactory);
-
-    //return SUCCEEDED(hr);
+    pdc_colorEffect->SetInput(0, pdc_font_bitmap);
 }
 #endif
