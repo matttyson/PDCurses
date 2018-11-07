@@ -17,23 +17,16 @@ D2D1::ColorF pdc_d2d_colors[];
 ID2D1Bitmap *pdc_font_bitmap = NULL;
 IDXGISwapChain1 *m_swapChain = NULL;
 
-//ID2D1SolidColorBrush *pdc_d2d_brushes[];
-
 static struct {
     short fg;
     short bg;
 }
 atrtab [PDC_COLOR_PAIRS];
 
-
-// D2D_USE_C_DEFINITIONS
-
 static void d2d_init_colours();
-static void d2d_load_font();
+static bool d2d_load_font_from_memory();
+static bool d2d_load_font_from_file();
 static bool d2d_create_context();
-//static void d2d_create_glyphs();
-
-// Create an array of brushes for drawing ?
 
 // Get the HINSTANCE of the executable or dll we have been linked in to.
 // https://blogs.msdn.microsoft.com/oldnewthing/20041025-00/?p=37483
@@ -178,9 +171,13 @@ int PDC_scr_open(int argc, char **argv)
     if(!trc){
         return -1;
     }
-    d2d_load_font();
-    d2d_init_colours();
 
+    trc = d2d_load_font_from_memory();
+    if(!trc){
+        return -1;
+    }
+
+    d2d_init_colours();
 
     ShowWindow(hwnd, SW_SHOWNORMAL);
     UpdateWindow(hwnd);
@@ -201,9 +198,6 @@ int PDC_scr_open(int argc, char **argv)
 
     // We need to set this so PDCurses knows how many colors we suppport.
     COLORS = 256;
-
-//    ((ID2D1DeviceContext*)rTarget)->CreateEffect(CLSID_D2D1ColorMatrix, &pdc_color_effect);
-    //d2d_create_glyphs();
 
     return OK;
 }
@@ -480,8 +474,7 @@ static void d2d_init_colours()
 
 // https://i.imgur.com/U4GnISB.jpg 
 
-#if 1
-static void d2d_load_font()
+static bool d2d_load_font_from_file()
 {
     ComPtr<IWICBitmapDecoder> pDecoder;
     ComPtr<IWICBitmapFrameDecode> pSource;
@@ -543,10 +536,11 @@ static void d2d_load_font()
 
     // todo fix this?
     pdc_colorEffect->SetInput(0, pdc_font_bitmap);
+
+    return SUCCEEDED(hr);
 }
 
-#else
-static void d2d_load_font()
+static bool d2d_load_font_from_memory()
 {
     ComPtr<IWICFormatConverter> pConverter;
     ComPtr<IWICImagingFactory> pIWICFactory;
@@ -566,7 +560,7 @@ static void d2d_load_font()
     );
 
     // We need to skip the bitmap header and provide the raw pixel data
-    // To do this we grap the offset where the data begins from the bitmap header
+    // To do this we grab the offset where the data begins from the bitmap header
     BITMAPFILEHEADER *fh = (BITMAPFILEHEADER*) deffont;
 
     if(SUCCEEDED(hr)){
@@ -633,5 +627,6 @@ static void d2d_load_font()
     }
 
     pdc_colorEffect->SetInput(0, pdc_font_bitmap);
+
+    return SUCCEEDED(hr);
 }
-#endif
