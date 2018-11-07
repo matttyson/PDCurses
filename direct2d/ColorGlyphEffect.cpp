@@ -1,5 +1,4 @@
 #include "ColorGlyphEffect.hpp"
-#include "ColorGlyphShader.hpp"
 
 #include "ColorGlyphEffectShader.h"
 
