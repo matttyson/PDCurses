@@ -4,6 +4,10 @@
 
 HRESULT ColorGlyphEffect::SetForegroundColor(D2D_VECTOR_3F foreground)
 {
+    if(foreground.x > 1.0f || foreground.y > 1.0f || foreground.z > 1.0f){
+        return E_INVALIDARG;
+    }
+
     m_colors.fg.r = foreground.x;
     m_colors.fg.g = foreground.y;
     m_colors.fg.b = foreground.z;
@@ -19,6 +23,10 @@ D2D_VECTOR_3F ColorGlyphEffect::GetForegroundColor()const
 
 HRESULT ColorGlyphEffect::SetBackgroundColor(D2D_VECTOR_3F background)
 {
+    if (background.x > 1.0f || background.y > 1.0f || background.z > 1.0f) {
+        return E_INVALIDARG;
+    }
+
     m_colors.bg.r = background.x;
     m_colors.bg.g = background.y;
     m_colors.bg.b = background.z;
