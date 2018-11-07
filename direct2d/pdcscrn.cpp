@@ -110,8 +110,11 @@ void PDC_scr_free(void)
     SafeRelease(&pdc_font_bitmap);
     SafeRelease(&m_d2dContext);
     SafeRelease(&pdc_colorEffect);
+    SafeRelease(&m_swapChain);
 
-    DestroyWindow(hwnd);
+    if(hwnd != NULL){
+        DestroyWindow(hwnd);
+    }
 
     CoUninitialize();
 }
@@ -169,11 +172,13 @@ int PDC_scr_open(int argc, char **argv)
 
     bool trc = d2d_create_context();
     if(!trc){
+        PDC_scr_free();
         return -1;
     }
 
     trc = d2d_load_font_from_memory();
     if(!trc){
+        PDC_scr_free();
         return -1;
     }
 
