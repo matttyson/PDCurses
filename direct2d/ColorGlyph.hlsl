@@ -23,10 +23,9 @@ cbuffer constants : register(b0)
     float fg_b : packoffset(c0.z);
 
     float bg_r : packoffset(c0.w);
-    float bg_g : packoffset(c1);
-    float bg_b : packoffset(c1.z);
+    float bg_g : packoffset(c1.x);
+    float bg_b : packoffset(c1.y);
 };
-
 
 D2D_PS_ENTRY(ColorChangeShader)
 {
