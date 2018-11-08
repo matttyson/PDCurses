@@ -17,6 +17,7 @@ D2D1::ColorF pdc_d2d_colors[];
 ID2D1Bitmap *pdc_font_bitmap = NULL;
 IDXGISwapChain1 *m_swapChain = NULL;
 
+
 static struct {
     short fg;
     short bg;
@@ -32,8 +33,6 @@ static bool d2d_create_context();
 // https://blogs.msdn.microsoft.com/oldnewthing/20041025-00/?p=37483
 EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 #define HINST_THISCOMPONENT ((HINSTANCE)&__ImageBase)
-
-LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 bool PDC_can_change_color(void)
 {
@@ -96,8 +95,26 @@ void PDC_save_screen_mode(int i)
     PDC_LOG((__FUNCTION__ " called\n"));
 }
 
+
+// TODO: Look at this a bit closer
+// Visual Studio gets a bit upset if we exit the program
+// without cleaning up our com objects.
+// Need to figure out how PDCurses calls 
+// PDC_scr_close() and PDC_scr_free()
 void PDC_scr_close(void)
 {
+    SafeRelease(&pdc_font_bitmap);
+    SafeRelease(&m_d2dContext);
+    SafeRelease(&pdc_colorEffect);
+    SafeRelease(&m_swapChain);
+
+    if (hwnd != NULL) {
+        DestroyWindow(hwnd);
+        hwnd = NULL;
+    }
+
+    CoUninitialize();
+
     PDC_LOG(("PDC_scr_close() - called\n"));
 }
 
@@ -105,24 +122,17 @@ void PDC_scr_free(void)
 {
     if(SP){
         free(SP);
+        SP = NULL;
     }
-
-    SafeRelease(&pdc_font_bitmap);
-    SafeRelease(&m_d2dContext);
-    SafeRelease(&pdc_colorEffect);
-    SafeRelease(&m_swapChain);
-
-    if(hwnd != NULL){
-        DestroyWindow(hwnd);
-    }
-
-    CoUninitialize();
 }
-
+#include <WinUser.h>
 int PDC_scr_open(int argc, char **argv)
 {
     PDC_LOG(("PDC_scr_open() - called\n"));
 
+    if(SP != NULL){
+        free(SP);
+    }
     SP = (SCREEN*) calloc(1, sizeof(SCREEN));
 
     if(FAILED(CoInitializeEx(NULL, COINIT_MULTITHREADED))){
@@ -133,12 +143,14 @@ int PDC_scr_open(int argc, char **argv)
     WNDCLASSEX window = { sizeof(WNDCLASSEX) };
 
     memset(&window, 0, sizeof(WNDCLASSEX));
-	window.cbSize = sizeof(WNDCLASSEX);
+    window.cbSize = sizeof(WNDCLASSEX);
 	window.hbrBackground = (HBRUSH) COLOR_WINDOW;
 	window.hInstance = HINST_THISCOMPONENT;
-	window.lpfnWndProc = WndProc;
+	window.lpfnWndProc = PDC_d2d_WndProc;
 	window.lpszClassName = L"MainWindow";
 	window.style = CS_HREDRAW | CS_VREDRAW;
+    window.hCursor = LoadCursor(NULL, IDC_ARROW);
+        //LoadImage(NULL, IDC_ARROW, IMAGE_CURSOR, 0,0, LR_DEFAULTSIZE);
 
     ATOM regd = RegisterClassEx(&window);
     if(regd == 0){
@@ -203,6 +215,8 @@ int PDC_scr_open(int argc, char **argv)
 
     // We need to set this so PDCurses knows how many colors we suppport.
     COLORS = 256;
+
+    PDC_d2d_init_events();
 
     return OK;
 }
@@ -414,19 +428,6 @@ static bool d2d_create_context()
     }
 
     return true;
-}
-
-static LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    if(uMsg == WM_CREATE){
-        return DefWindowProc(hwnd, uMsg, wParam, lParam);
-    }
-    if(uMsg == WM_DESTROY){
-        PostQuitMessage(0);
-        return 0;
-    }
-
-    return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 static D2D1::ColorF make_color(unsigned char r, unsigned char g, unsigned char b)

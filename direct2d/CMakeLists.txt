@@ -13,7 +13,7 @@ add_library(pdcd2d_static STATIC
     ${CMAKE_CURRENT_LIST_DIR}/pdcclip.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pdcdisp.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pdcgetsc.c
-    ${CMAKE_CURRENT_LIST_DIR}/pdckbd.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/pdckbd.c
     ${CMAKE_CURRENT_LIST_DIR}/pdcscrn.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pdcsetsc.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pdcsetsc.c
@@ -21,6 +21,7 @@ add_library(pdcd2d_static STATIC
     ${CMAKE_CURRENT_LIST_DIR}/ColorGlyphEffect.cpp
 	${CMAKE_CURRENT_LIST_DIR}/ColorGlyphEffectShader.h
     ${CMAKE_CURRENT_LIST_DIR}/Guid.cpp
+	${CMAKE_CURRENT_LIST_DIR}/pdc_d2d_util.c
 
     ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/addch.c
     ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/addchstr.c
@@ -74,7 +75,7 @@ include_directories(..)
 # Build Demos
 
 add_executable(firework
-    ${CMAKE_CURRENT_LIST_DIR}/../demos/firework.c
+    ${CMAKE_CURRENT_LIST_DIR}/../demos/firework.cpp
 )
 set_target_properties(firework PROPERTIES COMPILE_FLAGS "/TP")
 target_link_libraries(firework pdcd2d_static d2d1 windowscodecs dxguid D3D11)
@@ -99,11 +100,12 @@ target_link_libraries(firework pdcd2d_static d2d1 windowscodecs dxguid D3D11)
 #)
 #target_link_libraries(testcurs pdcd2d_static)
 
-#add_executable(tuidemo
-#    ${CMAKE_CURRENT_LIST_DIR}/../demos/tui.c
-#    ${CMAKE_CURRENT_LIST_DIR}/../demos/tuidemo.c
-#)
-#target_link_libraries(tuidemo pdcd2d_static d2d1)
+add_executable(tuidemo
+    ${CMAKE_CURRENT_LIST_DIR}/../demos/tui.c
+    ${CMAKE_CURRENT_LIST_DIR}/../demos/tuidemo.c
+)
+#set_target_properties(tuidemo PROPERTIES COMPILE_FLAGS "/TP")
+target_link_libraries(tuidemo pdcd2d_static d2d1 windowscodecs dxguid D3D11)
 
 #add_executable(worm
 #    ${CMAKE_CURRENT_LIST_DIR}/../demos/worm.c

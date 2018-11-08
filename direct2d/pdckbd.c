@@ -1,22 +1,29 @@
 #include "pdcd2d.h"
 
-extern "C"
+#include <Windows.h>
+
 unsigned long pdc_key_modifiers = 0L;
 
 bool PDC_check_key(void)
 {
-    return FALSE;
+    PDC_EventQueue();
+
+    return PDC_d2d_event_count() > 0;
 }
 
 void PDC_flushinp(void)
 {
+    PDC_d2d_init_events();
     PDC_LOG((__FUNCTION__ " called\n"));
 }
 
 int PDC_get_key(void)
 {
+    const int key = PDC_d2d_get_event();    
+
+    PDC_EventQueue();
     PDC_LOG((__FUNCTION__ " called\n"));
-    return 'A';
+    return key;
 }
 
 int PDC_modifiers_set(void)
