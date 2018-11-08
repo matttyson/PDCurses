@@ -125,6 +125,17 @@ static void _set_colors(chtype ch)
 
         if (newbg != backgr)
         {
+            const auto col = pdc_d2d_colors[newbg];
+
+            D2D_VECTOR_3F vec = {
+                col.r, col.g, col.b
+            };
+            HRESULT c = pdc_colorEffect->SetValueByName(
+                TEXT("BackgroundColor"),
+                D2D1_PROPERTY_TYPE_VECTOR3,
+                (const BYTE*)&vec,
+                sizeof(vec)
+            );
             backgr = newbg;
         }
 
