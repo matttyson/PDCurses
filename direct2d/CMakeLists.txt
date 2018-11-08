@@ -10,7 +10,7 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug")
 endif()
 
 add_library(pdcd2d_static STATIC
-    ${CMAKE_CURRENT_LIST_DIR}/pdcclip.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/pdcclip.c
     ${CMAKE_CURRENT_LIST_DIR}/pdcdisp.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pdcgetsc.c
     ${CMAKE_CURRENT_LIST_DIR}/pdckbd.c
