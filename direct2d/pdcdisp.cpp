@@ -219,15 +219,13 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
     attr_t old_attr;
     attr_t attr;
 
-    int i = 1;
+    int i = len;
     int j = 1;
 
     old_attr = *srcp & (A_ATTRIBUTES ^ A_ALTCHARSET);
 
-    static int cptr = 0;
-
     m_d2dContext->BeginDraw();
-
+    /*
     while(j < len){
         attr = srcp[i] & (A_ATTRIBUTES ^ A_ALTCHARSET);
         
@@ -242,7 +240,7 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
         i++;
         j++;
     }
-    
+    */
     _new_packet(old_attr, lineno, x, i, srcp);
 
     HRESULT hr = m_d2dContext->EndDraw();
