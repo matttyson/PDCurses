@@ -17,6 +17,11 @@ D2D1::ColorF pdc_d2d_colors[];
 ID2D1Bitmap *pdc_font_bitmap = NULL;
 IDXGISwapChain1 *m_swapChain = NULL;
 
+int pdc_d2d_should_resize = 0;
+int pdc_d2d_cols = 80;
+int pdc_d2d_rows = 25;
+
+
 
 static struct {
     short fg;
@@ -79,7 +84,63 @@ void PDC_reset_shell_mode(void)
 
 int PDC_resize_screen(int nlines, int ncols)
 {
-    RECT rect = {0, 0, 640, 400};
+
+    if(nlines == 0 && ncols == 0){
+        // https://msdn.microsoft.com/en-us/magazine/dn198239.aspx
+        // I need to release and re-create the Direct2D render target so that it
+        // matches the size of the new window area.
+
+        // TODO FIXME rewrite all this and the code that creates the display
+        // I need to put it in some kind of display class so it's not a god awful mess.
+        ULONG ul;
+        HRESULT hr;
+
+        // Release the old render target
+        m_d2dContext->SetTarget(nullptr);
+
+        // Resize swapchain.
+        hr = m_swapChain->ResizeBuffers(0,
+            pdc_d2d_cols * pdc_cwidth,
+            pdc_cheight * pdc_d2d_rows,
+            DXGI_FORMAT_UNKNOWN, 0);
+        if(FAILED(hr)){
+            printf("oops\n");
+        }
+
+        // Create a new render target.
+        ComPtr<IDXGISurface> dxgiBackBuffer;
+        hr = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&dxgiBackBuffer));
+        if (FAILED(hr)) {
+            return false;
+        }
+
+        D2D1_BITMAP_PROPERTIES1 bitmapProperties =
+            D2D1::BitmapProperties1(
+                D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+                D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM,
+                    D2D1_ALPHA_MODE_IGNORE
+                /*D2D1_ALPHA_MODE_PREMULTIPLIED*/),
+                96.0f,
+                96.0f
+            );
+
+        ComPtr<ID2D1Bitmap1> d2dTargetBitmap;
+        hr = m_d2dContext->CreateBitmapFromDxgiSurface(
+            dxgiBackBuffer.Get(),
+            &bitmapProperties,
+            &d2dTargetBitmap
+        );
+        if (FAILED(hr)) {
+            return false;
+    }
+
+        m_d2dContext->SetTarget(d2dTargetBitmap.Get());
+        m_d2dContext->BeginDraw();
+        m_d2dContext->Clear(0);
+        m_d2dContext->EndDraw();
+        m_swapChain->Present(1,0);
+
+    }
 
     PDC_LOG((__FUNCTION__ " called\n"));
     return OK;
@@ -309,14 +370,6 @@ static bool d2d_create_context()
     if (FAILED(hr)) {
         return false;
     }
-
-    hr = d2dDevice->CreateDeviceContext(
-        D2D1_DEVICE_CONTEXT_OPTIONS_NONE,
-        &m_d2dContext
-    );
-    if (FAILED(hr)) {
-        return false;
-    }
     
     // DXGI_FORMAT_R8G8B8A8_UNORM ?
 
@@ -358,6 +411,11 @@ static bool d2d_create_context()
         return false;
     }
 
+    hr = dxgiFactory->MakeWindowAssociation(hwnd, 0);
+    if (FAILED(hr)) {
+        return false;
+    }
+
     hr = dxgiDevice->SetMaximumFrameLatency(1);
     if (FAILED(hr)) {
         return false;
@@ -381,6 +439,16 @@ static bool d2d_create_context()
 
     ComPtr<IDXGISurface> dxgiBackBuffer;
     hr = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&dxgiBackBuffer));
+    if (FAILED(hr)) {
+        return false;
+    }
+
+
+    // Need to re-create everything from here onwards in the event of a resize.
+    hr = d2dDevice->CreateDeviceContext(
+        D2D1_DEVICE_CONTEXT_OPTIONS_NONE,
+        &m_d2dContext
+    );
     if (FAILED(hr)) {
         return false;
     }

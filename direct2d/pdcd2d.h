@@ -24,6 +24,9 @@ extern "C" {
 #endif
 extern int pdc_cheight;
 extern int pdc_cwidth;
+extern int pdc_d2d_rows;
+extern int pdc_d2d_cols;
+extern int pdc_d2d_should_resize;
 
 /* Functions to buffer events while we wait for the user to collect them. */
 void PDC_d2d_add_event(int event);

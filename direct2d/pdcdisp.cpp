@@ -223,7 +223,6 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
     int j = 1;
 
     old_attr = *srcp & (A_ATTRIBUTES ^ A_ALTCHARSET);
-
     m_d2dContext->BeginDraw();
     /*
     while(j < len){

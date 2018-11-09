@@ -8,6 +8,10 @@ bool PDC_check_key(void)
 {
     PDC_EventQueue();
 
+    if(pdc_d2d_should_resize > 0){
+        return TRUE;
+    }
+
     return PDC_d2d_event_count() > 0;
 }
 
@@ -20,6 +24,11 @@ void PDC_flushinp(void)
 int PDC_get_key(void)
 {
     const int key = PDC_d2d_get_event();    
+
+    if(key == KEY_RESIZE) {
+        SP->resized = TRUE;
+        SP->key_code = TRUE;
+    }
 
     PDC_EventQueue();
     PDC_LOG((__FUNCTION__ " called\n"));

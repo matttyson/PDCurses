@@ -13,7 +13,7 @@ int PDC_get_rows(void)
 {
     PDC_LOG(("PDC_get_rows() - called\n"));
 
-    return 25;
+    return pdc_d2d_rows;
 }
 
 /* return width of screen/viewport */
@@ -21,5 +21,5 @@ int PDC_get_columns(void)
 {
     PDC_LOG(("PDC_get_columns() - called\n"));
 
-    return 80;
+    return pdc_d2d_cols;
 }

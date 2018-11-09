@@ -47,6 +47,11 @@ int PDC_d2d_get_event()
 {
     int evt = -1;
 
+    if(pdc_d2d_should_resize > 0){
+        pdc_d2d_should_resize = 0;
+        return KEY_RESIZE;
+    }
+
     if(buffer.size > 0){
         evt = buffer.buffer[buffer.tail];
         buffer.tail = (buffer.tail + 1) & (BUFFER_SIZE - 1);
@@ -203,6 +208,48 @@ static chtype _process_key_event_2(WPARAM vk, LPARAM state)
 LRESULT CALLBACK PDC_d2d_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg) {
+    case WM_SIZING:
+    {
+        if(wParam == WMSZ_RIGHT || wParam == WMSZ_BOTTOM || wParam == WMSZ_BOTTOMRIGHT){
+            RECT windowRect;
+            GetWindowRect(hwnd, &windowRect);
+            RECT clientRect;
+            GetClientRect(hwnd, &clientRect);
+
+            const int borderWidth = abs((windowRect.right - windowRect.left) - (clientRect.right - clientRect.left));
+            const int topWidth = abs((windowRect.top - windowRect.bottom) - (clientRect.top - clientRect.bottom));
+
+            // We want to be able to force the window size to a multiple of 8 pixels wide
+            // or 16 pixels high so we can fit a complete row / column in.
+            // What we do is round down the window sizes so that rect is always a multiple
+            // of 8 x 16.
+            RECT *newsz = (RECT*) lParam;
+
+            // Work out the size of the client area by removing the border sizes
+            const int width = (newsz->right - newsz->left) - borderWidth;
+            const int height = (newsz->bottom - newsz->top) - topWidth;
+
+            // Update with our new row and column values
+            pdc_d2d_cols = width / 8;
+            pdc_d2d_rows = height / 16;
+
+            newsz->right = newsz->left + pdc_d2d_cols * 8 + borderWidth;
+            newsz->bottom = newsz->top + pdc_d2d_rows * 16 + topWidth;
+            printf("%03d x %03d\n", pdc_d2d_cols, pdc_d2d_rows);
+        }
+        else
+        {
+            RECT windowRect;
+            GetWindowRect(hwnd, &windowRect);
+            *((RECT*)lParam) = windowRect;
+        }
+    }
+        break;
+    case WM_SIZE:
+        // The window has been resized by the user, notify the client that it should resize itself.
+        pdc_d2d_should_resize = 1;
+        break;
+
     case WM_CREATE:
         return 0;
     case WM_DESTROY:

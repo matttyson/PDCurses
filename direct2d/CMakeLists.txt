@@ -90,10 +90,10 @@ target_link_libraries(firework pdcd2d_static d2d1 windowscodecs dxguid D3D11)
 #)
 #target_link_libraries(ptest pdcd2d_static)
 
-#add_executable(rain
-#    ${CMAKE_CURRENT_LIST_DIR}/../demos/rain.c
-#)
-#target_link_libraries(rain pdcd2d_static)
+add_executable(rain
+    ${CMAKE_CURRENT_LIST_DIR}/../demos/rain.c
+)
+target_link_libraries(rain pdcd2d_static d2d1 windowscodecs dxguid D3D11)
 
 #add_executable(testcurs
 #    ${CMAKE_CURRENT_LIST_DIR}/../demos/testcurs.c
