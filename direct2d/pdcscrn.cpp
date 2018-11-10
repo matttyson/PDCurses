@@ -17,6 +17,9 @@ D2D1::ColorF pdc_d2d_colors[];
 ID2D1Bitmap *pdc_font_bitmap = NULL;
 IDXGISwapChain1 *m_swapChain = NULL;
 
+static float PDC_d2d_dpi_x = 96.0f;
+static float PDC_d2d_dpi_y = 96.0f;
+
 int pdc_d2d_should_resize = 0;
 int pdc_d2d_cols = 80;
 int pdc_d2d_rows = 25;
@@ -302,6 +305,8 @@ static bool PDC_d2d_create_context()
         return false;
     }
 
+    d2dFactory1->GetDesktopDpi(&PDC_d2d_dpi_x, &PDC_d2d_dpi_y);
+
     // This flag adds support for surfaces with a different color channel ordering than the API default.
     // You need it for compatibility with Direct2D.
     const UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT
@@ -423,8 +428,8 @@ static bool PDC_d2d_create_context()
             D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, 
                 D2D1_ALPHA_MODE_IGNORE  
                 /*D2D1_ALPHA_MODE_PREMULTIPLIED*/),
-            96.0f,
-            96.0f
+            PDC_d2d_dpi_x,
+            PDC_d2d_dpi_y
         );
 
     ComPtr<IDXGISurface> dxgiBackBuffer;
@@ -715,7 +720,7 @@ static bool PDC_d2d_resize_swapchain(void)
         pdc_cheight * pdc_d2d_rows,
         DXGI_FORMAT_UNKNOWN, 0);
     if (FAILED(hr)) {
-        printf("oops\n");
+        return false;
     }
 
     // Create a new render target.
@@ -731,8 +736,8 @@ static bool PDC_d2d_resize_swapchain(void)
             D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM,
                 D2D1_ALPHA_MODE_IGNORE
             /*D2D1_ALPHA_MODE_PREMULTIPLIED*/),
-            96.0f,
-            96.0f
+            PDC_d2d_dpi_x,
+            PDC_d2d_dpi_y
         );
 
     ComPtr<ID2D1Bitmap1> d2dTargetBitmap;
