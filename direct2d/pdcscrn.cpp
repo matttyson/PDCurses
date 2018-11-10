@@ -33,6 +33,7 @@ static void d2d_init_colours();
 static bool d2d_load_font_from_memory();
 static bool d2d_load_font_from_file();
 static bool d2d_create_context();
+static bool PDC_d2d_resize_swapchain(void);
 
 // Get the HINSTANCE of the executable or dll we have been linked in to.
 // https://blogs.msdn.microsoft.com/oldnewthing/20041025-00/?p=37483
@@ -86,60 +87,7 @@ int PDC_resize_screen(int nlines, int ncols)
 {
 
     if(nlines == 0 && ncols == 0){
-        // https://msdn.microsoft.com/en-us/magazine/dn198239.aspx
-        // I need to release and re-create the Direct2D render target so that it
-        // matches the size of the new window area.
-
-        // TODO FIXME rewrite all this and the code that creates the display
-        // I need to put it in some kind of display class so it's not a god awful mess.
-        ULONG ul;
-        HRESULT hr;
-
-        // Release the old render target
-        m_d2dContext->SetTarget(nullptr);
-
-        // Resize swapchain.
-        hr = m_swapChain->ResizeBuffers(0,
-            pdc_d2d_cols * pdc_cwidth,
-            pdc_cheight * pdc_d2d_rows,
-            DXGI_FORMAT_UNKNOWN, 0);
-        if(FAILED(hr)){
-            printf("oops\n");
-        }
-
-        // Create a new render target.
-        ComPtr<IDXGISurface> dxgiBackBuffer;
-        hr = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&dxgiBackBuffer));
-        if (FAILED(hr)) {
-            return false;
-        }
-
-        D2D1_BITMAP_PROPERTIES1 bitmapProperties =
-            D2D1::BitmapProperties1(
-                D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
-                D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM,
-                    D2D1_ALPHA_MODE_IGNORE
-                /*D2D1_ALPHA_MODE_PREMULTIPLIED*/),
-                96.0f,
-                96.0f
-            );
-
-        ComPtr<ID2D1Bitmap1> d2dTargetBitmap;
-        hr = m_d2dContext->CreateBitmapFromDxgiSurface(
-            dxgiBackBuffer.Get(),
-            &bitmapProperties,
-            &d2dTargetBitmap
-        );
-        if (FAILED(hr)) {
-            return false;
-    }
-
-        m_d2dContext->SetTarget(d2dTargetBitmap.Get());
-        m_d2dContext->BeginDraw();
-        m_d2dContext->Clear(0);
-        m_d2dContext->EndDraw();
-        m_swapChain->Present(1,0);
-
+        PDC_d2d_resize_swapchain();
     }
     else if (nlines > 0 && ncols > 0){
         // The user wants to resize the terminal programmatically
@@ -150,39 +98,40 @@ int PDC_resize_screen(int nlines, int ncols)
             return OK;
         }
 
-        RECT client;
-        RECT window;
         RECT newrect;
-
+        RECT window;
         GetWindowRect(hwnd, &window);
-        GetClientRect(hwnd, &client);
 
         const int client_width = ncols * 8;
         const int client_height = nlines * 16;
-
-        client.right = client.left + client_width;
-        client.bottom = client.top + client_height;
 
         newrect.left = 0;
         newrect.top = 0;
         newrect.right = client_width;
         newrect.bottom = client_height;
 
-        AdjustWindowRectEx(
+        BOOL rc = AdjustWindowRectEx(
             &newrect,
             (DWORD)GetWindowLong(hwnd, GWL_STYLE),
             GetMenu(hwnd) != NULL,
             (DWORD)GetWindowLong(hwnd, GWL_EXSTYLE)
         );
+        if (!rc) {
+            return ERR;
+        }
 
-        BOOL rc = SetWindowPos(hwnd, HWND_TOP,
+        rc = SetWindowPos(hwnd, HWND_TOP,
             window.left,
             window.top,
             newrect.right - newrect.left,
             newrect.bottom - newrect.top,
             0);
 
+        if(!rc){
+            return ERR;
+        }
 
+        PDC_d2d_resize_swapchain();
     }
 
     PDC_LOG((__FUNCTION__ " called\n"));
@@ -327,8 +276,6 @@ int PDC_scr_open(int argc, char **argv)
 
 
 // https://docs.microsoft.com/en-us/windows/desktop/direct2d/color-matrix
-
-
 
 static bool d2d_create_context()
 {
@@ -746,4 +693,68 @@ static bool d2d_load_font_from_memory()
     pdc_colorEffect->SetInput(0, pdc_font_bitmap);
 
     return SUCCEEDED(hr);
+}
+
+
+// https://msdn.microsoft.com/en-us/magazine/dn198239.aspx
+// I need to release and re-create the Direct2D render target so that it
+// matches the size of the new window area.
+
+// Must be called whenever the display is resized
+static bool PDC_d2d_resize_swapchain(void)
+{
+    ULONG ul;
+    HRESULT hr;
+
+    // Release the old render target
+    m_d2dContext->SetTarget(nullptr);
+
+    // Resize swapchain.
+    hr = m_swapChain->ResizeBuffers(0,
+        pdc_d2d_cols * pdc_cwidth,
+        pdc_cheight * pdc_d2d_rows,
+        DXGI_FORMAT_UNKNOWN, 0);
+    if (FAILED(hr)) {
+        printf("oops\n");
+    }
+
+    // Create a new render target.
+    ComPtr<IDXGISurface> dxgiBackBuffer;
+    hr = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&dxgiBackBuffer));
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    D2D1_BITMAP_PROPERTIES1 bitmapProperties =
+        D2D1::BitmapProperties1(
+            D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+            D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM,
+                D2D1_ALPHA_MODE_IGNORE
+            /*D2D1_ALPHA_MODE_PREMULTIPLIED*/),
+            96.0f,
+            96.0f
+        );
+
+    ComPtr<ID2D1Bitmap1> d2dTargetBitmap;
+    hr = m_d2dContext->CreateBitmapFromDxgiSurface(
+        dxgiBackBuffer.Get(),
+        &bitmapProperties,
+        &d2dTargetBitmap
+    );
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    m_d2dContext->SetTarget(d2dTargetBitmap.Get());
+    m_d2dContext->BeginDraw();
+    m_d2dContext->Clear(0);
+    hr = m_d2dContext->EndDraw();
+    if (FAILED(hr)) {
+        return false;
+    }
+
+    hr = m_swapChain->Present(1, 0);
+    if (FAILED(hr)) {
+        return false;
+    }
 }
