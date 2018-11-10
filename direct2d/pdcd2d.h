@@ -24,9 +24,9 @@ extern "C" {
 #endif
 extern int pdc_cheight;
 extern int pdc_cwidth;
-extern int pdc_d2d_rows;
-extern int pdc_d2d_cols;
-extern int pdc_d2d_should_resize;
+extern int PDC_d2d_rows;
+extern int PDC_d2d_cols;
+extern int PDC_d2d_should_resize;
 
 /* Functions to buffer events while we wait for the user to collect them. */
 void PDC_d2d_add_event(int event);
@@ -43,7 +43,7 @@ LRESULT CALLBACK PDC_d2d_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 */
 void PDC_EventQueue(void);
 
-extern HWND hwnd;
+extern HWND PDC_d2d_hwnd;
 
 #ifdef __cplusplus
 }
@@ -62,12 +62,12 @@ extern HWND hwnd;
 
 #include "ColorGlyphEffect.hpp"
 
-extern ID2D1DeviceContext *m_d2dContext;
-extern ID2D1Effect *pdc_colorEffect;
-extern D2D1::ColorF pdc_d2d_colors[256];
-extern ID2D1Bitmap *pdc_font_bitmap;
+extern ID2D1DeviceContext *PDC_d2d_context;
+extern ID2D1Effect *PDC_d2d_colorEffect;
+extern D2D1::ColorF PDC_d2d_colors[256];
+extern ID2D1Bitmap *PDC_d2d_font_bitmap;
 
-extern IDXGISwapChain1 *m_swapChain;
+extern IDXGISwapChain1 *PDC_d2d_swapChain;
 
 template<class Interface>
 inline void SafeRelease(

@@ -10,19 +10,19 @@
 #include <wrl/client.h>
 using namespace Microsoft::WRL; // for ComPtr
 
-HWND hwnd = NULL;
-ID2D1DeviceContext *m_d2dContext = NULL;
-ID2D1Effect *pdc_colorEffect = NULL;
-D2D1::ColorF pdc_d2d_colors[];
-ID2D1Bitmap *pdc_font_bitmap = NULL;
-IDXGISwapChain1 *m_swapChain = NULL;
+HWND PDC_d2d_hwnd = NULL;
+ID2D1DeviceContext *PDC_d2d_context = NULL;
+ID2D1Effect *PDC_d2d_colorEffect = NULL;
+ID2D1Bitmap *PDC_d2d_font_bitmap = NULL;
+IDXGISwapChain1 *PDC_d2d_swapChain = NULL;
+D2D1::ColorF PDC_d2d_colors[];
 
 static float PDC_d2d_dpi_x = 96.0f;
 static float PDC_d2d_dpi_y = 96.0f;
 
-int pdc_d2d_should_resize = 0;
-int pdc_d2d_cols = 80;
-int pdc_d2d_rows = 25;
+int PDC_d2d_should_resize = 0;
+int PDC_d2d_cols = 80;
+int PDC_d2d_rows = 25;
 
 
 
@@ -94,16 +94,16 @@ int PDC_resize_screen(int nlines, int ncols)
     }
     else if (nlines > 0 && ncols > 0){
         // The user wants to resize the terminal programmatically
-        pdc_d2d_rows = nlines;
-        pdc_d2d_cols = ncols;
+        PDC_d2d_rows = nlines;
+        PDC_d2d_cols = ncols;
 
-        if(m_d2dContext == NULL){
+        if(PDC_d2d_context == NULL){
             return OK;
         }
 
         RECT newrect;
         RECT window;
-        GetWindowRect(hwnd, &window);
+        GetWindowRect(PDC_d2d_hwnd, &window);
 
         const int client_width = ncols * 8;
         const int client_height = nlines * 16;
@@ -115,15 +115,15 @@ int PDC_resize_screen(int nlines, int ncols)
 
         BOOL rc = AdjustWindowRectEx(
             &newrect,
-            (DWORD)GetWindowLong(hwnd, GWL_STYLE),
-            GetMenu(hwnd) != NULL,
-            (DWORD)GetWindowLong(hwnd, GWL_EXSTYLE)
+            (DWORD)GetWindowLong(PDC_d2d_hwnd, GWL_STYLE),
+            GetMenu(PDC_d2d_hwnd) != NULL,
+            (DWORD)GetWindowLong(PDC_d2d_hwnd, GWL_EXSTYLE)
         );
         if (!rc) {
             return ERR;
         }
 
-        rc = SetWindowPos(hwnd, HWND_TOP,
+        rc = SetWindowPos(PDC_d2d_hwnd, HWND_TOP,
             window.left,
             window.top,
             newrect.right - newrect.left,
@@ -159,14 +159,14 @@ void PDC_save_screen_mode(int i)
 // PDC_scr_close() and PDC_scr_free()
 void PDC_scr_close(void)
 {
-    SafeRelease(&pdc_font_bitmap);
-    SafeRelease(&m_d2dContext);
-    SafeRelease(&pdc_colorEffect);
-    SafeRelease(&m_swapChain);
+    SafeRelease(&PDC_d2d_font_bitmap);
+    SafeRelease(&PDC_d2d_context);
+    SafeRelease(&PDC_d2d_colorEffect);
+    SafeRelease(&PDC_d2d_swapChain);
 
-    if (hwnd != NULL) {
-        DestroyWindow(hwnd);
-        hwnd = NULL;
+    if (PDC_d2d_hwnd != NULL) {
+        DestroyWindow(PDC_d2d_hwnd);
+        PDC_d2d_hwnd = NULL;
     }
 
     CoUninitialize();
@@ -219,7 +219,7 @@ int PDC_scr_open(int argc, char **argv)
 
     AdjustWindowRectEx(&rect, WS_OVERLAPPEDWINDOW, FALSE, WS_EX_OVERLAPPEDWINDOW);
 
-	hwnd = CreateWindowEx(
+	PDC_d2d_hwnd = CreateWindowEx(
         WS_EX_OVERLAPPEDWINDOW,
 		L"MainWindow",
         L"PDCursesDirect2D",
@@ -231,7 +231,7 @@ int PDC_scr_open(int argc, char **argv)
         HINST_THISCOMPONENT, NULL
 	);
 
-    if(hwnd == NULL){
+    if(PDC_d2d_hwnd == NULL){
         const DWORD err = GetLastError();
         PDC_LOG(("CreateWindowEx() failed with code %d\n", err));
         UnregisterClass(L"MainWindow", HINST_THISCOMPONENT);
@@ -252,8 +252,8 @@ int PDC_scr_open(int argc, char **argv)
 
     PDC_d2d_init_colours();
 
-    ShowWindow(hwnd, SW_SHOWNORMAL);
-    UpdateWindow(hwnd);
+    ShowWindow(PDC_d2d_hwnd, SW_SHOWNORMAL);
+    UpdateWindow(PDC_d2d_hwnd);
 
     SP->orig_attr = TRUE;
     SP->orig_fore = COLOR_WHITE;
@@ -396,17 +396,17 @@ static bool PDC_d2d_create_context()
 
     hr = dxgiFactory->CreateSwapChainForHwnd(
         device.Get(),
-        hwnd,
+        PDC_d2d_hwnd,
         &swapChainDesc,
         nullptr,    // allow on all displays
         nullptr,
-        &m_swapChain
+        &PDC_d2d_swapChain
     );
     if (FAILED(hr)) {
         return false;
     }
 
-    hr = dxgiFactory->MakeWindowAssociation(hwnd, 0);
+    hr = dxgiFactory->MakeWindowAssociation(PDC_d2d_hwnd, 0);
     if (FAILED(hr)) {
         return false;
     }
@@ -417,7 +417,7 @@ static bool PDC_d2d_create_context()
     }
 
     ComPtr<ID3D11Texture2D> backBuffer;
-    hr = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+    hr = PDC_d2d_swapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
     if (FAILED(hr)) {
         return false;
     }
@@ -433,7 +433,7 @@ static bool PDC_d2d_create_context()
         );
 
     ComPtr<IDXGISurface> dxgiBackBuffer;
-    hr = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&dxgiBackBuffer));
+    hr = PDC_d2d_swapChain->GetBuffer(0, IID_PPV_ARGS(&dxgiBackBuffer));
     if (FAILED(hr)) {
         return false;
     }
@@ -442,14 +442,14 @@ static bool PDC_d2d_create_context()
     // Need to re-create everything from here onwards in the event of a resize.
     hr = d2dDevice->CreateDeviceContext(
         D2D1_DEVICE_CONTEXT_OPTIONS_NONE,
-        &m_d2dContext
+        &PDC_d2d_context
     );
     if (FAILED(hr)) {
         return false;
     }
 
     ComPtr<ID2D1Bitmap1> d2dTargetBitmap;
-    hr = m_d2dContext->CreateBitmapFromDxgiSurface(
+    hr = PDC_d2d_context->CreateBitmapFromDxgiSurface(
         dxgiBackBuffer.Get(),
         &bitmapProperties,
         &d2dTargetBitmap
@@ -458,15 +458,15 @@ static bool PDC_d2d_create_context()
         return false;
     }
 
-    m_d2dContext->SetTarget(d2dTargetBitmap.Get());
+    PDC_d2d_context->SetTarget(d2dTargetBitmap.Get());
 
     hr = ColorGlyphEffect::Register(d2dFactory1.Get());
     if (FAILED(hr)) {
         return false;
     }
 
-    hr = m_d2dContext->CreateEffect(CLSID_ColorGlyphEffect,
-        &pdc_colorEffect);
+    hr = PDC_d2d_context->CreateEffect(CLSID_ColorGlyphEffect,
+        &PDC_d2d_colorEffect);
     if (FAILED(hr)) {
         return false;
     }
@@ -477,15 +477,15 @@ static bool PDC_d2d_create_context()
     // supplied with a rect param that limits the copy area.
 
     DXGI_PRESENT_PARAMETERS params = {0};
-    m_d2dContext->BeginDraw();
-    m_d2dContext->Clear(0x0);
-    hr = m_d2dContext->EndDraw();
+    PDC_d2d_context->BeginDraw();
+    PDC_d2d_context->Clear(0x0);
+    hr = PDC_d2d_context->EndDraw();
 
     if (FAILED(hr)) {
         return false;
     }
 
-    hr = m_swapChain->Present1(1,0,&params);
+    hr = PDC_d2d_swapChain->Present1(1,0,&params);
     if (FAILED(hr)) {
         return false;
     }
@@ -516,8 +516,8 @@ static void PDC_d2d_init_colours()
         const unsigned char gb = (i & COLOR_GREEN) ? bold : 0;
         const unsigned char bb = (i & COLOR_BLUE)  ? bold : 0;
 
-        pdc_d2d_colors[i] = make_color(r, g, b);
-        pdc_d2d_colors[i + 8] = make_color(rb, gb, bb);
+        PDC_d2d_colors[i] = make_color(r, g, b);
+        PDC_d2d_colors[i + 8] = make_color(rb, gb, bb);
     }
 
     // The XTerm extended colour set.
@@ -529,7 +529,7 @@ static void PDC_d2d_init_colours()
                 const unsigned char grn = (g ? g * 40 + 55 : 0);
                 const unsigned char blu = (b ? b * 40 + 55 : 0);
 
-                pdc_d2d_colors[color++] = make_color(red, grn, blu);
+                PDC_d2d_colors[color++] = make_color(red, grn, blu);
             }
         }
     }
@@ -537,7 +537,7 @@ static void PDC_d2d_init_colours()
     // grey colours
     for(int i = 0; i < 24; i++){
         const unsigned char value = i * 10 + 8;
-        pdc_d2d_colors[i + 232] = make_color(value, value, value);
+        PDC_d2d_colors[i + 232] = make_color(value, value, value);
     }
 }
 
@@ -596,15 +596,15 @@ static bool PDC_d2d_load_font_from_file()
     {
 
         // Create a Direct2D bitmap from the WIC bitmap.
-        hr = m_d2dContext->CreateBitmapFromWicBitmap(
+        hr = PDC_d2d_context->CreateBitmapFromWicBitmap(
             pConverter.Get(),
             NULL,
-            &pdc_font_bitmap
+            &PDC_d2d_font_bitmap
         );
     }
 
     // todo fix this?
-    pdc_colorEffect->SetInput(0, pdc_font_bitmap);
+    PDC_d2d_colorEffect->SetInput(0, PDC_d2d_font_bitmap);
 
     return SUCCEEDED(hr);
 }
@@ -688,14 +688,14 @@ static bool PDC_d2d_load_font_from_memory()
 
     if(SUCCEEDED(hr)){
         // Create a Direct2D bitmap from the WIC bitmap.
-        hr = m_d2dContext->CreateBitmapFromWicBitmap(
+        hr = PDC_d2d_context->CreateBitmapFromWicBitmap(
             pConverter.Get(),
             NULL,
-            &pdc_font_bitmap
+            &PDC_d2d_font_bitmap
         );
     }
 
-    pdc_colorEffect->SetInput(0, pdc_font_bitmap);
+    PDC_d2d_colorEffect->SetInput(0, PDC_d2d_font_bitmap);
 
     return SUCCEEDED(hr);
 }
@@ -712,12 +712,12 @@ static bool PDC_d2d_resize_swapchain(void)
     HRESULT hr;
 
     // Release the old render target
-    m_d2dContext->SetTarget(nullptr);
+    PDC_d2d_context->SetTarget(nullptr);
 
     // Resize swapchain.
-    hr = m_swapChain->ResizeBuffers(0,
-        pdc_d2d_cols * pdc_cwidth,
-        pdc_cheight * pdc_d2d_rows,
+    hr = PDC_d2d_swapChain->ResizeBuffers(0,
+        PDC_d2d_cols * pdc_cwidth,
+        pdc_cheight * PDC_d2d_rows,
         DXGI_FORMAT_UNKNOWN, 0);
     if (FAILED(hr)) {
         return false;
@@ -725,7 +725,7 @@ static bool PDC_d2d_resize_swapchain(void)
 
     // Create a new render target.
     ComPtr<IDXGISurface> dxgiBackBuffer;
-    hr = m_swapChain->GetBuffer(0, IID_PPV_ARGS(&dxgiBackBuffer));
+    hr = PDC_d2d_swapChain->GetBuffer(0, IID_PPV_ARGS(&dxgiBackBuffer));
     if (FAILED(hr)) {
         return false;
     }
@@ -741,7 +741,7 @@ static bool PDC_d2d_resize_swapchain(void)
         );
 
     ComPtr<ID2D1Bitmap1> d2dTargetBitmap;
-    hr = m_d2dContext->CreateBitmapFromDxgiSurface(
+    hr = PDC_d2d_context->CreateBitmapFromDxgiSurface(
         dxgiBackBuffer.Get(),
         &bitmapProperties,
         &d2dTargetBitmap
@@ -750,15 +750,15 @@ static bool PDC_d2d_resize_swapchain(void)
         return false;
     }
 
-    m_d2dContext->SetTarget(d2dTargetBitmap.Get());
-    m_d2dContext->BeginDraw();
-    m_d2dContext->Clear(0);
-    hr = m_d2dContext->EndDraw();
+    PDC_d2d_context->SetTarget(d2dTargetBitmap.Get());
+    PDC_d2d_context->BeginDraw();
+    PDC_d2d_context->Clear(0);
+    hr = PDC_d2d_context->EndDraw();
     if (FAILED(hr)) {
         return false;
     }
 
-    hr = m_swapChain->Present(1, 0);
+    hr = PDC_d2d_swapChain->Present(1, 0);
     if (FAILED(hr)) {
         return false;
     }

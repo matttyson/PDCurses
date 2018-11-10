@@ -8,7 +8,7 @@ bool PDC_check_key(void)
 {
     PDC_EventQueue();
 
-    if(pdc_d2d_should_resize > 0){
+    if(PDC_d2d_should_resize > 0){
         return TRUE;
     }
 

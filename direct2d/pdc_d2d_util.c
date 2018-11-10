@@ -14,7 +14,7 @@ static struct ring_buffer buffer;
 void PDC_EventQueue(void)
 {
     MSG msg = { 0 };
-    while (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
+    while (PeekMessage(&msg, PDC_d2d_hwnd, 0, 0, PM_REMOVE)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
@@ -47,8 +47,8 @@ int PDC_d2d_get_event()
 {
     int evt = -1;
 
-    if(pdc_d2d_should_resize > 0){
-        pdc_d2d_should_resize = 0;
+    if(PDC_d2d_should_resize > 0){
+        PDC_d2d_should_resize = 0;
         return KEY_RESIZE;
     }
 
@@ -230,12 +230,12 @@ LRESULT CALLBACK PDC_d2d_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             const int height = (newsz->bottom - newsz->top) - topWidth;
 
             // Update with our new row and column values
-            pdc_d2d_cols = width / 8;
-            pdc_d2d_rows = height / 16;
+            PDC_d2d_cols = width / 8;
+            PDC_d2d_rows = height / 16;
 
-            newsz->right = newsz->left + pdc_d2d_cols * 8 + borderWidth;
-            newsz->bottom = newsz->top + pdc_d2d_rows * 16 + topWidth;
-            printf("%03d x %03d\n", pdc_d2d_cols, pdc_d2d_rows);
+            newsz->right = newsz->left + PDC_d2d_cols * 8 + borderWidth;
+            newsz->bottom = newsz->top + PDC_d2d_rows * 16 + topWidth;
+            printf("%03d x %03d\n", PDC_d2d_cols, PDC_d2d_rows);
         }
         else
         {
@@ -247,7 +247,7 @@ LRESULT CALLBACK PDC_d2d_WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
         break;
     case WM_SIZE:
         // The window has been resized by the user, notify the client that it should resize itself.
-        pdc_d2d_should_resize = 1;
+        PDC_d2d_should_resize = 1;
         break;
 
     case WM_CREATE:

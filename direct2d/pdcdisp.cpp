@@ -107,13 +107,13 @@ static void _set_colors(chtype ch)
         if (newfg != foregr)
         {
 #ifndef PDC_WIDE
-            const auto col = pdc_d2d_colors[newfg];
+            const auto col = PDC_d2d_colors[newfg];
 
             D2D_VECTOR_3F vec = {
                 col.r, col.g, col.b
             };
 
-            HRESULT c = pdc_colorEffect->SetValueByName(
+            HRESULT c = PDC_d2d_colorEffect->SetValueByName(
                 TEXT("ForegroundColor"),
                 D2D1_PROPERTY_TYPE_VECTOR3,
                 (const BYTE*)&vec,
@@ -125,12 +125,12 @@ static void _set_colors(chtype ch)
 
         if (newbg != backgr)
         {
-            const auto col = pdc_d2d_colors[newbg];
+            const auto col = PDC_d2d_colors[newbg];
 
             D2D_VECTOR_3F vec = {
                 col.r, col.g, col.b
             };
-            HRESULT c = pdc_colorEffect->SetValueByName(
+            HRESULT c = PDC_d2d_colorEffect->SetValueByName(
                 TEXT("BackgroundColor"),
                 D2D1_PROPERTY_TYPE_VECTOR3,
                 (const BYTE*)&vec,
@@ -191,8 +191,8 @@ static void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *s
 
         //m_d2dContext->SetTransform((ID2D1DrawTransform*)m_colorGlyphEffect);
 
-        m_d2dContext->DrawImage(
-            pdc_colorEffect,
+        PDC_d2d_context->DrawImage(
+            PDC_d2d_colorEffect,
             dpoint,
             source,
             D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
@@ -223,7 +223,7 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
     int j = 1;
 
     old_attr = *srcp & (A_ATTRIBUTES ^ A_ALTCHARSET);
-    m_d2dContext->BeginDraw();
+    PDC_d2d_context->BeginDraw();
     /*
     while(j < len){
         attr = srcp[i] & (A_ATTRIBUTES ^ A_ALTCHARSET);
@@ -242,7 +242,7 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
     */
     _new_packet(old_attr, lineno, x, i, srcp);
 
-    HRESULT hr = m_d2dContext->EndDraw();
+    HRESULT hr = PDC_d2d_context->EndDraw();
     if(FAILED(hr)){
         PDC_LOG(("Failure\n"));
     }
@@ -265,7 +265,7 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
     params.pDirtyRects = &dirty;
 
     // Submit the buffer for drawing.
-    hr = m_swapChain->Present1(1, 0, &params);
+    hr = PDC_d2d_swapChain->Present1(1, 0, &params);
     if (FAILED(hr)) {
         PDC_LOG(("Failure\n"));
     }
