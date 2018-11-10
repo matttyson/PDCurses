@@ -29,10 +29,10 @@ static struct {
 }
 atrtab [PDC_COLOR_PAIRS];
 
-static void d2d_init_colours();
-static bool d2d_load_font_from_memory();
-static bool d2d_load_font_from_file();
-static bool d2d_create_context();
+static void PDC_d2d_init_colours();
+static bool PDC_d2d_load_font_from_memory();
+static bool PDC_d2d_load_font_from_file();
+static bool PDC_d2d_create_context();
 static bool PDC_d2d_resize_swapchain(void);
 
 // Get the HINSTANCE of the executable or dll we have been linked in to.
@@ -235,19 +235,19 @@ int PDC_scr_open(int argc, char **argv)
         return -1;
     }
 
-    bool trc = d2d_create_context();
+    bool trc = PDC_d2d_create_context();
     if(!trc){
         PDC_scr_free();
         return -1;
     }
 
-    trc = d2d_load_font_from_memory();
+    trc = PDC_d2d_load_font_from_memory();
     if(!trc){
         PDC_scr_free();
         return -1;
     }
 
-    d2d_init_colours();
+    PDC_d2d_init_colours();
 
     ShowWindow(hwnd, SW_SHOWNORMAL);
     UpdateWindow(hwnd);
@@ -277,7 +277,7 @@ int PDC_scr_open(int argc, char **argv)
 
 // https://docs.microsoft.com/en-us/windows/desktop/direct2d/color-matrix
 
-static bool d2d_create_context()
+static bool PDC_d2d_create_context()
 {
     // https://msdn.microsoft.com/en-us/magazine/dn198239.aspx
     // https://msdn.microsoft.com/magazine/jj991972
@@ -494,7 +494,7 @@ static D2D1::ColorF make_color(unsigned char r, unsigned char g, unsigned char b
     return D2D1::ColorF(color);
 }
 
-static void d2d_init_colours()
+static void PDC_d2d_init_colours()
 {
     // First 8 colours are the standard XTerm colours.
     // Next 8 are the bolded versions.
@@ -538,7 +538,7 @@ static void d2d_init_colours()
 
 // https://i.imgur.com/U4GnISB.jpg 
 
-static bool d2d_load_font_from_file()
+static bool PDC_d2d_load_font_from_file()
 {
     ComPtr<IWICBitmapDecoder> pDecoder;
     ComPtr<IWICBitmapFrameDecode> pSource;
@@ -604,7 +604,7 @@ static bool d2d_load_font_from_file()
     return SUCCEEDED(hr);
 }
 
-static bool d2d_load_font_from_memory()
+static bool PDC_d2d_load_font_from_memory()
 {
     ComPtr<IWICFormatConverter> pConverter;
     ComPtr<IWICImagingFactory> pIWICFactory;
