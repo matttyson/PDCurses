@@ -22,8 +22,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-extern int pdc_cheight;
-extern int pdc_cwidth;
+#define PDC_D2D_CHAR_HEIGHT 16
+#define PDC_D2D_CHAR_WIDTH 8
 extern int PDC_d2d_rows;
 extern int PDC_d2d_cols;
 extern int PDC_d2d_should_resize;

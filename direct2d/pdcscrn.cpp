@@ -105,8 +105,8 @@ int PDC_resize_screen(int nlines, int ncols)
         RECT window;
         GetWindowRect(PDC_d2d_hwnd, &window);
 
-        const int client_width = ncols * 8;
-        const int client_height = nlines * 16;
+        const int client_width = ncols * PDC_D2D_CHAR_WIDTH;
+        const int client_height = nlines * PDC_D2D_CHAR_HEIGHT;
 
         newrect.left = 0;
         newrect.top = 0;
@@ -716,8 +716,8 @@ static bool PDC_d2d_resize_swapchain(void)
 
     // Resize swapchain.
     hr = PDC_d2d_swapChain->ResizeBuffers(0,
-        PDC_d2d_cols * pdc_cwidth,
-        pdc_cheight * PDC_d2d_rows,
+        PDC_d2d_cols * PDC_D2D_CHAR_WIDTH,
+        PDC_D2D_CHAR_HEIGHT * PDC_d2d_rows,
         DXGI_FORMAT_UNKNOWN, 0);
     if (FAILED(hr)) {
         return false;

@@ -61,8 +61,6 @@ chtype acs_map[128] =
 
 #endif
 
-int pdc_cheight = 16;
-int pdc_cwidth = 8;
 static chtype oldch = -1;
 static short foregr = -2;
 static short backgr = -2;
@@ -153,8 +151,8 @@ static void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *s
 
     // pdc_font_bitmap
 
-    const int ybegin = pdc_cheight * lineno;
-    const int xbegin = pdc_cwidth * x;
+    const int ybegin = PDC_D2D_CHAR_HEIGHT * lineno;
+    const int xbegin = PDC_D2D_CHAR_WIDTH * x;
     const float raduis = 0.2f;
 
     const attr_t sysattrs = SP->termattrs;
@@ -162,10 +160,10 @@ static void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *s
     const bool do_blink = (attr & A_BLINK) && (sysattrs & A_BLINK);
 
     for (int i = 0; i < len; i++) {
-        const float left = xbegin + i * pdc_cwidth;
+        const float left = xbegin + i * PDC_D2D_CHAR_WIDTH;
         const float top = ybegin;
-        const float right = left + pdc_cwidth;
-        const float bottom = ybegin + pdc_cheight;
+        const float right = left + PDC_D2D_CHAR_WIDTH;
+        const float bottom = ybegin + PDC_D2D_CHAR_HEIGHT;
 
         int color = (srcp[i] & A_COLOR) >> PDC_COLOR_SHIFT;
         const chtype letter = srcp[i] & A_CHARTEXT;
@@ -180,10 +178,10 @@ static void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *s
         const int source_row = letter / 32;
         const int source_col = letter % 32;
 
-        const float sleft = source_col * 8;
-        const float stop = source_row * 16;
+        const float sleft = source_col * PDC_D2D_CHAR_WIDTH;
+        const float stop = source_row * PDC_D2D_CHAR_HEIGHT;
 
-        const auto source = D2D1::RectF(sleft, stop, sleft+8.0f, stop+16.0f);
+        const auto source = D2D1::RectF(sleft, stop, sleft+ PDC_D2D_CHAR_WIDTH, stop + PDC_D2D_CHAR_HEIGHT);
         
         // https://docs.microsoft.com/en-us/windows/desktop/direct2d/color-matrix
         // https://stackoverflow.com/questions/6347950/programmatically-creating-directx-11-textures-pros-and-cons-of-the-three-differ/6539561#6539561
@@ -256,10 +254,10 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
     DXGI_PRESENT_PARAMETERS params = {0};
     RECT dirty;
 
-    dirty.left = x * 8;
-    dirty.top = lineno * 16;
-    dirty.right = x * 8 + len * 8;
-    dirty.bottom = lineno * 16 + 16;
+    dirty.left = x * PDC_D2D_CHAR_WIDTH;
+    dirty.top = lineno * PDC_D2D_CHAR_HEIGHT;
+    dirty.right = x * PDC_D2D_CHAR_WIDTH + len * PDC_D2D_CHAR_WIDTH;
+    dirty.bottom = lineno * PDC_D2D_CHAR_HEIGHT + PDC_D2D_CHAR_HEIGHT;
 
     params.DirtyRectsCount = 1;
     params.pDirtyRects = &dirty;
