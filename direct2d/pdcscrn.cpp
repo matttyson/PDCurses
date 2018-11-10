@@ -3,7 +3,7 @@
 #include "deffont.h"
 
 #include "ColorGlyphEffect.hpp"
-
+#include <windowsx.h>
 #include <memory>
 
 #include <d3d11.h>
@@ -139,6 +139,49 @@ int PDC_resize_screen(int nlines, int ncols)
         m_d2dContext->Clear(0);
         m_d2dContext->EndDraw();
         m_swapChain->Present(1,0);
+
+    }
+    else if (nlines > 0 && ncols > 0){
+        // The user wants to resize the terminal programmatically
+        pdc_d2d_rows = nlines;
+        pdc_d2d_cols = ncols;
+
+        if(m_d2dContext == NULL){
+            return OK;
+        }
+
+        RECT client;
+        RECT window;
+        RECT newrect;
+
+        GetWindowRect(hwnd, &window);
+        GetClientRect(hwnd, &client);
+
+        const int client_width = ncols * 8;
+        const int client_height = nlines * 16;
+
+        client.right = client.left + client_width;
+        client.bottom = client.top + client_height;
+
+        newrect.left = 0;
+        newrect.top = 0;
+        newrect.right = client_width;
+        newrect.bottom = client_height;
+
+        AdjustWindowRectEx(
+            &newrect,
+            (DWORD)GetWindowLong(hwnd, GWL_STYLE),
+            GetMenu(hwnd) != NULL,
+            (DWORD)GetWindowLong(hwnd, GWL_EXSTYLE)
+        );
+
+        BOOL rc = SetWindowPos(hwnd, HWND_TOP,
+            window.left,
+            window.top,
+            newrect.right - newrect.left,
+            newrect.bottom - newrect.top,
+            0);
+
 
     }
 
