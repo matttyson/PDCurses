@@ -4,6 +4,12 @@
 
 #include "pdcd2d.h"
 
+#ifdef PDC_WIDE
+# include "../common/acsgr.h"
+#else
+# include "../common/acs437.h"
+#endif
+
 static chtype oldch = -1;
 static short foregr = -2;
 static short backgr = -2;
@@ -16,7 +22,6 @@ void PDC_gotoyx(int row, int col)
 {
     PDC_LOG((__FUNCTION__ " called\n"));
 }
-
 
 static void _set_colors(chtype ch)
 {
@@ -85,47 +90,39 @@ static void _set_colors(chtype ch)
 }
 
 
-static void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *srcp)
+static void _new_packet(int lineno, int x, int len, const chtype *srcp)
 {
-    chtype ch;
-
-    ch = *srcp & A_CHARTEXT;
-    // line number can be determined by looking at the pixes per char
-
-    // pdc_font_bitmap
-
     const int ybegin = PDC_D2D_CHAR_HEIGHT * lineno;
     const int xbegin = PDC_D2D_CHAR_WIDTH * x;
-    const float raduis = 0.2f;
 
     const attr_t sysattrs = SP->termattrs;
-
-    const bool do_blink = (attr & A_BLINK) && (sysattrs & A_BLINK);
 
     for (int i = 0; i < len; i++) {
         const float left = xbegin + i * PDC_D2D_CHAR_WIDTH;
         const float top = ybegin;
         const float right = left + PDC_D2D_CHAR_WIDTH;
         const float bottom = ybegin + PDC_D2D_CHAR_HEIGHT;
-
-        int color = (srcp[i] & A_COLOR) >> PDC_COLOR_SHIFT;
-        const chtype letter = srcp[i] & A_CHARTEXT;
-
-        _set_colors(srcp[i]);
-
         const auto destination = D2D1::RectF(left, top, right, bottom);
+
+        chtype ch = srcp[i];
+
+        _set_colors(ch);
+
+        if (ch & A_ALTCHARSET && !(ch & 0xff80)) {
+            ch = acs_map[ch & 0x7f];
+        }
+
         const auto dpoint = D2D1::Point2F(left, top);
 
         // Work out the area in the source glyph.
-
-        const int source_row = letter / 32;
-        const int source_col = letter % 32;
+        const int source_row = (ch & 0xff) / 32;
+        const int source_col = (ch & 0xff) % 32;
 
         const float sleft = source_col * PDC_D2D_CHAR_WIDTH;
         const float stop = source_row * PDC_D2D_CHAR_HEIGHT;
 
         const auto source = D2D1::RectF(sleft, stop, sleft+ PDC_D2D_CHAR_WIDTH, stop + PDC_D2D_CHAR_HEIGHT);
-        
+
         // https://docs.microsoft.com/en-us/windows/desktop/direct2d/color-matrix
         // https://stackoverflow.com/questions/6347950/programmatically-creating-directx-11-textures-pros-and-cons-of-the-three-differ/6539561#6539561
         // https://stackoverflow.com/questions/9021244/how-to-work-with-pixels-using-direct2d
@@ -139,18 +136,7 @@ static void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *s
             D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
             D2D1_COMPOSITE_MODE_SOURCE_OVER
         );
-
-        /*
-        m_d2dContext->DrawBitmap(
-            pdc_font_bitmap,
-            &destination,
-            1.0f,
-            D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
-            &source
-        );*/
     }
-
-
 }
 
 #include <array>
@@ -213,12 +199,7 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
 
 static void D2D_draw_transform(int lineno, int x, int len, const chtype* srcp)
 {
-    attr_t old_attr = *srcp & (A_ATTRIBUTES & A_ALTCHARSET);
-
-    int i = len;
-    int j = 1;
-
-    _new_packet(old_attr, lineno, x, i, srcp);
+    _new_packet(lineno, x, len, srcp);
 
     // https://code.msdn.microsoft.com/windowsapps/DXGI-swap-chain-rotation-21d13d71
     // https://docs.microsoft.com/en-gb/windows/desktop/api/dxgi1_2/nf-dxgi1_2-idxgiswapchain1-present1
