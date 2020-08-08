@@ -35,7 +35,6 @@ add_library(pdcd2d_static STATIC
     ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/debug.c
     ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/delch.c
     ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/deleteln.c
-    ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/deprec.c
     ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/getch.c
     ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/getstr.c
     ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/getyx.c
@@ -61,7 +60,6 @@ add_library(pdcd2d_static STATIC
     ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/scr_dump.c
     ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/slk.c
     ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/termattr.c
-    ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/terminfo.c
     ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/touch.c
     ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/util.c
     ${CMAKE_CURRENT_LIST_DIR}/../pdcurses/window.c
@@ -75,7 +73,7 @@ include_directories(..)
 # Build Demos
 
 add_executable(firework
-    ${CMAKE_CURRENT_LIST_DIR}/../demos/firework.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/../demos/firework.c
 )
 set_target_properties(firework PROPERTIES COMPILE_FLAGS "/TP")
 target_link_libraries(firework pdcd2d_static d2d1 windowscodecs dxguid D3D11)
