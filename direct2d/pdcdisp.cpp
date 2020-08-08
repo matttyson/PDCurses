@@ -155,38 +155,108 @@ static void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *s
 
 #include <vector>
 
+struct line_transform
+{
+    line_transform(int lineno_, int x_, int len_, const chtype* srcp_)
+        :lineno(lineno_), x(x_), len(len_)
+    {
+        srcp = new chtype[len];
+        memcpy(srcp, srcp_, len * sizeof(chtype));
+    }
+    ~line_transform() {
+        delete[] srcp;
+    }
+
+    line_transform(const line_transform& rhs) = delete;
+    line_transform& operator=(const line_transform& rhs) = delete;
+
+    line_transform(line_transform&& rhs) noexcept
+        :lineno(rhs.lineno), x(rhs.x), len(rhs.len), srcp(rhs.srcp)
+    {
+        rhs.srcp = nullptr;
+    }
+    line_transform& operator=(line_transform&& rhs) noexcept {
+        lineno = rhs.lineno;
+        x = rhs.x;
+        len = rhs.len;
+        srcp = rhs.srcp;
+
+        rhs.srcp = nullptr;
+
+        return *this;
+    }
+
+    int lineno;
+    int x;
+    int len;
+    chtype* srcp;
+};
+
+static std::vector<line_transform> transforms;
+
 void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
 {
-    attr_t old_attr;
+    transforms.emplace_back(lineno, x, len, srcp);
+    return;
+}
+
+static void D2D_draw_transform(int lineno, int x, int len, const chtype* srcp)
+{
+    attr_t old_attr = *srcp & (A_ATTRIBUTES & A_ALTCHARSET);
 
     int i = len;
     int j = 1;
 
-    old_attr = *srcp & (A_ATTRIBUTES ^ A_ALTCHARSET);
-    PDC_d2d_context->BeginDraw();
     _new_packet(old_attr, lineno, x, i, srcp);
-
-    HRESULT hr = PDC_d2d_context->EndDraw();
-    if(FAILED(hr)){
-        PDC_LOG(("Failure\n"));
-    }
 
     // https://code.msdn.microsoft.com/windowsapps/DXGI-swap-chain-rotation-21d13d71
     // https://docs.microsoft.com/en-gb/windows/desktop/api/dxgi1_2/nf-dxgi1_2-idxgiswapchain1-present1
     // https://docs.microsoft.com/en-gb/windows/desktop/api/dxgi1_2/ns-dxgi1_2-dxgi_present_parameters
     // https://docs.microsoft.com/en-us/windows/desktop/direct3ddxgi/dxgi-1-2-presentation-improvements
-    
-    // Calculate the area that we have drawn to
-    DXGI_PRESENT_PARAMETERS params = {0};
-    RECT dirty;
 
-    dirty.left = x * PDC_D2D_CHAR_WIDTH;
-    dirty.top = lineno * PDC_D2D_CHAR_HEIGHT;
-    dirty.right = x * PDC_D2D_CHAR_WIDTH + len * PDC_D2D_CHAR_WIDTH;
-    dirty.bottom = lineno * PDC_D2D_CHAR_HEIGHT + PDC_D2D_CHAR_HEIGHT;
+    PDC_LOG((__FUNCTION__ " called\n"));
+}
 
-    params.DirtyRectsCount = 1;
-    params.pDirtyRects = &dirty;
+void PDC_doupdate(void)
+{
+    HRESULT hr;
+
+    if (transforms.size() == 0) {
+        return;
+    }
+
+    PDC_d2d_context->BeginDraw();
+
+    RECT* rectlist = new RECT[transforms.size()];
+
+    size_t i = 0;
+    for (const auto& ts : transforms) {
+        D2D_draw_transform(ts.lineno, ts.x, ts.len, ts.srcp);
+
+        /* Calculate the dirty rects */
+        rectlist[i].left = ts.x * PDC_D2D_CHAR_WIDTH;
+        rectlist[i].top = ts.lineno * PDC_D2D_CHAR_HEIGHT;
+        rectlist[i].right = ts.x * PDC_D2D_CHAR_WIDTH + ts.len * PDC_D2D_CHAR_WIDTH;
+        rectlist[i].bottom = ts.lineno * PDC_D2D_CHAR_HEIGHT + PDC_D2D_CHAR_HEIGHT;
+
+        i++;
+    }
+
+    hr = PDC_d2d_context->EndDraw();
+    if (FAILED(hr)) {
+        PDC_LOG(("Failure\n"));
+    }
+
+    /*
+       TODO: instead of doing 1 rect per line, work out if we can consolodiate the rects.
+       For example, if the left and right of the current rect match the previous rect we
+       could just adjust the top and bottom of the previous rect and not generate a
+       new rect.
+    */
+    DXGI_PRESENT_PARAMETERS params = { 0 };
+
+    params.DirtyRectsCount = i;
+    params.pDirtyRects = rectlist;
 
     // Submit the buffer for drawing.
     hr = PDC_d2d_swapChain->Present1(1, 0, &params);
@@ -194,12 +264,8 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
         PDC_LOG(("Failure\n"));
     }
 
-    PDC_LOG((__FUNCTION__ " called\n"));
-}
-
-void PDC_doupdate(void)
-{
-
+    delete[] rectlist;
+    transforms.clear();
 }
 
 void PDC_blink_text(void)
