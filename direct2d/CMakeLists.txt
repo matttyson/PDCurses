@@ -15,9 +15,8 @@ add_library(pdcd2d_static STATIC
     ${CMAKE_CURRENT_LIST_DIR}/pdcgetsc.c
     ${CMAKE_CURRENT_LIST_DIR}/pdckbd.c
     ${CMAKE_CURRENT_LIST_DIR}/pdcscrn.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/pdcsetsc.cpp
     ${CMAKE_CURRENT_LIST_DIR}/pdcsetsc.c
-    ${CMAKE_CURRENT_LIST_DIR}/pdcutil.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/pdcutil.c
     ${CMAKE_CURRENT_LIST_DIR}/ColorGlyphEffect.cpp
 	${CMAKE_CURRENT_LIST_DIR}/ColorGlyphEffectShader.h
     ${CMAKE_CURRENT_LIST_DIR}/Guid.cpp

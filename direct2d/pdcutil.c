@@ -1,7 +1,5 @@
 #include "pdcd2d.h"
 
-
-
 void PDC_beep(void)
 {
     PDC_LOG((__FUNCTION__ " called\n"));
@@ -13,7 +11,7 @@ void PDC_beep(void)
 void PDC_napms(int ms)
 {
     PDC_EventQueue();
-    ::Sleep(ms);
+    Sleep(ms);
     PDC_LOG((__FUNCTION__ " called\n"));
 }
 

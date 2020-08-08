@@ -20,3 +20,15 @@ int PDC_set_blink(bool blinkon)
     PDC_LOG((__FUNCTION__ " called\n"));
     return 0;
 }
+
+int PDC_curs_set(int visibility)
+{
+    PDC_LOG(("PDC_curs_set() - called: visibility=%d\n", visibility));
+
+    return 0;
+}
+
+void PDC_set_title(const char* title)
+{
+    PDC_LOG(("PDC_set_title() - called:<%s>\n", title));
+}
