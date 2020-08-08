@@ -88,7 +88,7 @@ static void _set_colors(chtype ch)
         if (SP->mono)
             return;
 
-        PDC_pair_content(PAIR_NUMBER(ch), &newfg, &newbg);
+        pair_content(PAIR_NUMBER(ch), &newfg, &newbg);
 
         if ((ch & A_BOLD) && !(sysattrs & A_BOLD))
             newfg |= 8;
@@ -215,7 +215,6 @@ static void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *s
 void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
 {
     attr_t old_attr;
-    attr_t attr;
 
     int i = len;
     int j = 1;
@@ -269,6 +268,11 @@ void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
     }
 
     PDC_LOG((__FUNCTION__ " called\n"));
+}
+
+void PDC_doupdate(void)
+{
+
 }
 
 void PDC_blink_text(void)

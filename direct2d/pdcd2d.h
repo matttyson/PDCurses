@@ -64,7 +64,7 @@ extern HWND PDC_d2d_hwnd;
 
 extern ID2D1DeviceContext *PDC_d2d_context;
 extern ID2D1Effect *PDC_d2d_colorEffect;
-extern D2D1::ColorF PDC_d2d_colors[256];
+extern D2D1::ColorF PDC_d2d_colors[PDC_MAXCOL];
 extern ID2D1Bitmap *PDC_d2d_font_bitmap;
 
 extern IDXGISwapChain1 *PDC_d2d_swapChain;

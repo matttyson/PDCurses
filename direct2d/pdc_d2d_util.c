@@ -66,12 +66,13 @@ int PDC_d2d_event_count(void)
     return buffer.size;
 }
 
+extern unsigned long pdc_key_modifiers;
 
 static chtype _process_key_event_2(WPARAM vk, LPARAM state)
 {
     pdc_key_modifiers = 0L;
 
-    if (SP->save_key_modifiers){
+    if (1 /*SP->save_key_modifiers*/){
         if(GetKeyState(VK_SHIFT) & 0x8000){
             pdc_key_modifiers |= PDC_KEY_MODIFIER_SHIFT;
         }

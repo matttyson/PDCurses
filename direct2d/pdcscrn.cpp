@@ -25,12 +25,7 @@ int PDC_d2d_cols = 80;
 int PDC_d2d_rows = 25;
 
 
-
-static struct {
-    short fg;
-    short bg;
-}
-atrtab [PDC_COLOR_PAIRS];
+const static LPCWSTR PDC_d2d_classname = L"MainWindow";
 
 static void PDC_d2d_init_colours();
 static bool PDC_d2d_load_font_from_memory();
@@ -57,21 +52,6 @@ int PDC_color_content(short color, short *red, short *green, short *blue)
 
 int PDC_init_color(short color, short red, short green, short blue)
 {
-    PDC_LOG((__FUNCTION__ " called\n"));
-    return OK;
-}
-
-void PDC_init_pair(short pair, short fg, short bg)
-{
-    atrtab[pair].fg = fg;
-    atrtab[pair].bg = bg;
-    PDC_LOG((__FUNCTION__ " called\n"));
-}
-
-int PDC_pair_content(short pair, short *fg, short *bg)
-{
-    *fg = atrtab[pair].fg;
-    *bg = atrtab[pair].bg;
     PDC_LOG((__FUNCTION__ " called\n"));
     return OK;
 }
@@ -160,14 +140,16 @@ void PDC_save_screen_mode(int i)
 void PDC_scr_close(void)
 {
     SafeRelease(&PDC_d2d_font_bitmap);
-    SafeRelease(&PDC_d2d_context);
     SafeRelease(&PDC_d2d_colorEffect);
     SafeRelease(&PDC_d2d_swapChain);
+    SafeRelease(&PDC_d2d_context);
 
     if (PDC_d2d_hwnd != NULL) {
         DestroyWindow(PDC_d2d_hwnd);
         PDC_d2d_hwnd = NULL;
     }
+
+    UnregisterClass(PDC_d2d_classname, HINST_THISCOMPONENT);
 
     CoUninitialize();
 
@@ -176,23 +158,22 @@ void PDC_scr_close(void)
 
 void PDC_scr_free(void)
 {
-    if(SP){
-        free(SP);
-        SP = NULL;
-    }
+
+
+    PDC_LOG(("PDC_scr_free() - called\n"));
 }
-#include <WinUser.h>
-int PDC_scr_open(int argc, char **argv)
+
+int PDC_scr_open(void)
 {
     PDC_LOG(("PDC_scr_open() - called\n"));
 
-    if(SP != NULL){
-        free(SP);
+    if (SP == NULL) {
+        PDC_LOG(("SP is NULL ?!?"));
+        return ERR;
     }
-    SP = (SCREEN*) calloc(1, sizeof(SCREEN));
 
     if(FAILED(CoInitializeEx(NULL, COINIT_MULTITHREADED))){
-        return -1;
+        return ERR;
     }
 
     // Register the window class.
@@ -203,7 +184,7 @@ int PDC_scr_open(int argc, char **argv)
 	window.hbrBackground = (HBRUSH) COLOR_WINDOW;
 	window.hInstance = HINST_THISCOMPONENT;
 	window.lpfnWndProc = PDC_d2d_WndProc;
-	window.lpszClassName = L"MainWindow";
+    window.lpszClassName = PDC_d2d_classname;
 	window.style = CS_HREDRAW | CS_VREDRAW;
     window.hCursor = LoadCursor(NULL, IDC_ARROW);
         //LoadImage(NULL, IDC_ARROW, IMAGE_CURSOR, 0,0, LR_DEFAULTSIZE);
@@ -212,7 +193,7 @@ int PDC_scr_open(int argc, char **argv)
     if(regd == 0){
         const DWORD err = GetLastError();
         PDC_LOG(("RegisterClassEx() failed"));
-        return -1;
+        return ERR;
     }
 
     RECT rect = {0, 0, 640, 400};
@@ -234,45 +215,43 @@ int PDC_scr_open(int argc, char **argv)
     if(PDC_d2d_hwnd == NULL){
         const DWORD err = GetLastError();
         PDC_LOG(("CreateWindowEx() failed with code %d\n", err));
-        UnregisterClass(L"MainWindow", HINST_THISCOMPONENT);
-        return -1;
+        UnregisterClass(PDC_d2d_classname, HINST_THISCOMPONENT);
+        return ERR;
     }
 
     bool trc = PDC_d2d_create_context();
     if(!trc){
         PDC_scr_free();
-        return -1;
+        return ERR;
     }
 
     trc = PDC_d2d_load_font_from_memory();
     if(!trc){
         PDC_scr_free();
-        return -1;
+        return ERR;
     }
-
-    PDC_d2d_init_colours();
-
-    ShowWindow(PDC_d2d_hwnd, SW_SHOWNORMAL);
-    UpdateWindow(PDC_d2d_hwnd);
 
     SP->orig_attr = TRUE;
     SP->orig_fore = COLOR_WHITE;
-    SP->orig_back = -1;
+    SP->orig_back = COLOR_BLACK;
 
     SP->mono = FALSE;
     SP->audible = FALSE;
     SP->lines = PDC_get_rows();
     SP->cols = PDC_get_columns();
 
-    SP->audible = FALSE;
     SP->mouse_wait = PDC_CLICK_PERIOD;
 
     SP->termattrs = A_COLOR | A_UNDERLINE | A_LEFT | A_RIGHT | A_REVERSE;
 
     // We need to set this so PDCurses knows how many colors we suppport.
-    COLORS = 256;
+    COLORS = PDC_MAXCOL;
 
     PDC_d2d_init_events();
+    PDC_d2d_init_colours();
+
+    ShowWindow(PDC_d2d_hwnd, SW_SHOWNORMAL);
+    UpdateWindow(PDC_d2d_hwnd);
 
     return OK;
 }
@@ -305,8 +284,11 @@ static bool PDC_d2d_create_context()
         return false;
     }
 
+#if WINVER >= _WIN32_WINNT_WIN10
+    PDC_d2d_dpi_y = PDC_d2d_dpi_x = GetDpiForWindow(PDC_d2d_hwnd);
+#else
     d2dFactory1->GetDesktopDpi(&PDC_d2d_dpi_x, &PDC_d2d_dpi_y);
-
+#endif
     // This flag adds support for surfaces with a different color channel ordering than the API default.
     // You need it for compatibility with Direct2D.
     const UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT
@@ -762,4 +744,6 @@ static bool PDC_d2d_resize_swapchain(void)
     if (FAILED(hr)) {
         return false;
     }
+
+    return true;
 }

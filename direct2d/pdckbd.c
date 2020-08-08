@@ -51,10 +51,3 @@ void PDC_set_keyboard_binary(bool on)
 {
     PDC_LOG((__FUNCTION__ " called\n"));
 }
-
-unsigned long PDC_get_input_fd(void)
-{
-    PDC_LOG((__FUNCTION__ " called\n"));
-
-    return 0L;  /* test this */
-}
