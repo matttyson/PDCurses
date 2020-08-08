@@ -153,10 +153,11 @@ static void _new_packet(attr_t attr, int lineno, int x, int len, const chtype *s
 
 }
 
-#include <vector>
+#include <array>
 
 struct line_transform
 {
+    line_transform() :lineno(0), x(0), len(0), srcp(nullptr) {}
     line_transform(int lineno_, int x_, int len_, const chtype* srcp_)
         :lineno(lineno_), x(x_), len(len_)
     {
@@ -171,14 +172,19 @@ struct line_transform
     line_transform& operator=(const line_transform& rhs) = delete;
 
     line_transform(line_transform&& rhs) noexcept
-        :lineno(rhs.lineno), x(rhs.x), len(rhs.len), srcp(rhs.srcp)
+        :lineno(rhs.lineno), x(rhs.x), len(rhs.len)
     {
+        delete[] srcp;
+        srcp = rhs.srcp;
         rhs.srcp = nullptr;
     }
     line_transform& operator=(line_transform&& rhs) noexcept {
         lineno = rhs.lineno;
         x = rhs.x;
         len = rhs.len;
+        if (srcp != nullptr) {
+            delete[] srcp;
+        }
         srcp = rhs.srcp;
 
         rhs.srcp = nullptr;
@@ -192,12 +198,17 @@ struct line_transform
     chtype* srcp;
 };
 
-static std::vector<line_transform> transforms;
+constexpr size_t max_transforms = 25;
+static size_t current_transforms = 0;
+static std::array<line_transform, max_transforms> transforms;
+static std::array<RECT, max_transforms> ts_rects;
 
 void PDC_transform_line(int lineno, int x, int len, const chtype *srcp)
 {
-    transforms.emplace_back(lineno, x, len, srcp);
-    return;
+    if (current_transforms == max_transforms) {
+        PDC_doupdate();
+    }
+    transforms[current_transforms++] = line_transform(lineno, x, len, srcp);
 }
 
 static void D2D_draw_transform(int lineno, int x, int len, const chtype* srcp)
@@ -221,30 +232,32 @@ void PDC_doupdate(void)
 {
     HRESULT hr;
 
-    if (transforms.size() == 0) {
+    if (current_transforms == 0) {
         return;
     }
 
     PDC_d2d_context->BeginDraw();
 
-    RECT* rectlist = new RECT[transforms.size()];
-
-    size_t i = 0;
-    for (const auto& ts : transforms) {
-        D2D_draw_transform(ts.lineno, ts.x, ts.len, ts.srcp);
+    for(size_t i = 0; i < current_transforms; i++) {
+        D2D_draw_transform(
+            transforms[i].lineno,
+            transforms[i].x,
+            transforms[i].len,
+            transforms[i].srcp);
 
         /* Calculate the dirty rects */
-        rectlist[i].left = ts.x * PDC_D2D_CHAR_WIDTH;
-        rectlist[i].top = ts.lineno * PDC_D2D_CHAR_HEIGHT;
-        rectlist[i].right = ts.x * PDC_D2D_CHAR_WIDTH + ts.len * PDC_D2D_CHAR_WIDTH;
-        rectlist[i].bottom = ts.lineno * PDC_D2D_CHAR_HEIGHT + PDC_D2D_CHAR_HEIGHT;
-
-        i++;
+        ts_rects[i].left = transforms[i].x * PDC_D2D_CHAR_WIDTH;
+        ts_rects[i].top = transforms[i].lineno * PDC_D2D_CHAR_HEIGHT;
+        ts_rects[i].right = transforms[i].x * PDC_D2D_CHAR_WIDTH + transforms[i].len * PDC_D2D_CHAR_WIDTH;
+        ts_rects[i].bottom = transforms[i].lineno * PDC_D2D_CHAR_HEIGHT + PDC_D2D_CHAR_HEIGHT;
     }
 
     hr = PDC_d2d_context->EndDraw();
     if (FAILED(hr)) {
         PDC_LOG(("Failure\n"));
+        /* What do we do here?*/
+        current_transforms = 0;
+        return;
     }
 
     /*
@@ -255,8 +268,8 @@ void PDC_doupdate(void)
     */
     DXGI_PRESENT_PARAMETERS params = { 0 };
 
-    params.DirtyRectsCount = i;
-    params.pDirtyRects = rectlist;
+    params.DirtyRectsCount = static_cast<UINT>(current_transforms);
+    params.pDirtyRects = ts_rects.data();
 
     // Submit the buffer for drawing.
     hr = PDC_d2d_swapChain->Present1(1, 0, &params);
@@ -264,8 +277,7 @@ void PDC_doupdate(void)
         PDC_LOG(("Failure\n"));
     }
 
-    delete[] rectlist;
-    transforms.clear();
+    current_transforms = 0;
 }
 
 void PDC_blink_text(void)
