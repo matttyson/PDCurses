@@ -212,6 +212,10 @@ static void D2D_draw_transform(int lineno, int x, int len, const chtype* srcp)
 void PDC_doupdate(void)
 {
     HRESULT hr;
+    int prev_lineno = INT_MIN;
+    int prev_x = INT_MIN;
+    int prev_len = INT_MIN;
+    size_t r = 0;
 
     if (current_transforms == 0) {
         return;
@@ -226,11 +230,29 @@ void PDC_doupdate(void)
             transforms[i].len,
             transforms[i].srcp);
 
+        if ((prev_lineno + 1 == transforms[i].lineno) &&
+            (prev_x == transforms[i].x) &&
+            (prev_len == transforms[i].len))
+        {
+            /*
+             * This line is the same size as the line above it. Instead of creating a new rect
+             * just adjust the bottom of the previous rect
+             */
+            ts_rects[r-1].bottom = transforms[i].lineno * PDC_D2D_CHAR_HEIGHT + PDC_D2D_CHAR_HEIGHT;
+
+            prev_lineno++;
+        }
+        else {
         /* Calculate the dirty rects */
-        ts_rects[i].left = transforms[i].x * PDC_D2D_CHAR_WIDTH;
-        ts_rects[i].top = transforms[i].lineno * PDC_D2D_CHAR_HEIGHT;
-        ts_rects[i].right = transforms[i].x * PDC_D2D_CHAR_WIDTH + transforms[i].len * PDC_D2D_CHAR_WIDTH;
-        ts_rects[i].bottom = transforms[i].lineno * PDC_D2D_CHAR_HEIGHT + PDC_D2D_CHAR_HEIGHT;
+            ts_rects[r].left = transforms[i].x * PDC_D2D_CHAR_WIDTH;
+            ts_rects[r].top = transforms[i].lineno * PDC_D2D_CHAR_HEIGHT;
+            ts_rects[r].right = transforms[i].x * PDC_D2D_CHAR_WIDTH + transforms[i].len * PDC_D2D_CHAR_WIDTH;
+            ts_rects[r].bottom = transforms[i].lineno * PDC_D2D_CHAR_HEIGHT + PDC_D2D_CHAR_HEIGHT;
+            r++;
+            prev_lineno = transforms[i].lineno;
+            prev_x = transforms[i].x;
+            prev_len = transforms[i].len;
+        }
     }
 
     hr = PDC_d2d_context->EndDraw();
@@ -241,15 +263,9 @@ void PDC_doupdate(void)
         return;
     }
 
-    /*
-       TODO: instead of doing 1 rect per line, work out if we can consolodiate the rects.
-       For example, if the left and right of the current rect match the previous rect we
-       could just adjust the top and bottom of the previous rect and not generate a
-       new rect.
-    */
     DXGI_PRESENT_PARAMETERS params = { 0 };
 
-    params.DirtyRectsCount = static_cast<UINT>(current_transforms);
+    params.DirtyRectsCount = static_cast<UINT>(r);
     params.pDirtyRects = ts_rects.data();
 
     // Submit the buffer for drawing.
